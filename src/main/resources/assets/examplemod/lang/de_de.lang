@@ -1,0 +1,11 @@
+key.examplemod.openclothing=Kleidungsmenü öffnen
+key.categories.examplemod=Modulare Kleidung
+
+gui.examplemod.clothing.title=Modulare Kleidung
+gui.examplemod.clothing.head=Kopf
+gui.examplemod.clothing.chest=Brust
+gui.examplemod.clothing.rightarm=Rechter Arm
+gui.examplemod.clothing.leftarm=Linker Arm
+gui.examplemod.clothing.rightleg=Rechtes Bein
+gui.examplemod.clothing.leftleg=Linkes Bein
+

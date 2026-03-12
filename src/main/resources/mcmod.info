@@ -1,0 +1,16 @@
+[
+{
+  "modid": "examplemod",
+  "name": "Modular Clothing",
+  "description": "A modular clothing and armor system that allows equipping armor per body limb with per-limb rendering.",
+  "version": "${version}",
+  "mcversion": "${mcversion}",
+  "url": "",
+  "updateUrl": "",
+  "authorList": ["ExampleDude"],
+  "credits": "The Forge and FML guys",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": []
+}
+]
