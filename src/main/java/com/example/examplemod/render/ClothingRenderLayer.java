@@ -56,6 +56,10 @@ public class ClothingRenderLayer implements LayerRenderer<AbstractClientPlayer> 
                 model = defaultModel;
             }
 
+            // Attempt to handle DynamX/OBJ models visibility for specific parts (and capture state)
+            java.util.Map<net.minecraft.client.model.ModelRenderer, Boolean> backupState =
+                DynamXHelper.updateDynamXModel(model, slotType);
+
             try {
                 // Sync attributes
                 model.setModelAttributes(this.renderer.getMainModel());
@@ -149,6 +153,9 @@ public class ClothingRenderLayer implements LayerRenderer<AbstractClientPlayer> 
             } catch (Exception e) {
                 // Log exception safely
                 System.err.println("Error rendering clothing layer: " + e.getMessage());
+            } finally {
+                // Restore model state to avoid affecting other renderings of the same item
+                DynamXHelper.restoreDynamXModel(backupState);
             }
         }
     }
