@@ -9,39 +9,30 @@ import net.minecraftforge.common.capabilities.ICapabilitySerializable;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-/**
- * Provider that attaches the clothing capability to players.
- * Implements ICapabilitySerializable so it auto-saves/loads with the player.
- */
-public class ClothingCapabilityProvider implements ICapabilitySerializable<NBTTagCompound> {
-
+public class ClothingProvider implements ICapabilitySerializable<NBTTagCompound> {
     @CapabilityInject(IClothingInventory.class)
-    public static Capability<IClothingInventory> CLOTHING_CAP = null;
+    public static final Capability<IClothingInventory> CLOTHING_CAPABILITY = null;
 
-    private final ClothingInventory inventory = new ClothingInventory();
+    private final IClothingInventory instance = new ClothingInventory();
 
     @Override
     public boolean hasCapability(@Nonnull Capability<?> capability, @Nullable EnumFacing facing) {
-        return capability == CLOTHING_CAP;
+        return capability == CLOTHING_CAPABILITY;
     }
 
     @Nullable
     @Override
     public <T> T getCapability(@Nonnull Capability<T> capability, @Nullable EnumFacing facing) {
-        if (capability == CLOTHING_CAP) {
-            return CLOTHING_CAP.cast(inventory);
-        }
-        return null;
+        return capability == CLOTHING_CAPABILITY ? CLOTHING_CAPABILITY.cast(instance) : null;
     }
 
     @Override
     public NBTTagCompound serializeNBT() {
-        return inventory.serializeNBT();
+        return instance.serializeNBT();
     }
 
     @Override
     public void deserializeNBT(NBTTagCompound nbt) {
-        inventory.deserializeNBT(nbt);
+        instance.deserializeNBT(nbt);
     }
 }
-

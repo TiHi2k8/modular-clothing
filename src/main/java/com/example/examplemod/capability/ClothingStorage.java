@@ -7,12 +7,7 @@ import net.minecraftforge.common.capabilities.Capability;
 
 import javax.annotation.Nullable;
 
-/**
- * Storage handler for the clothing capability.
- * Delegates serialization to the IClothingInventory implementation.
- */
-public class ClothingCapabilityStorage implements Capability.IStorage<IClothingInventory> {
-
+public class ClothingStorage implements Capability.IStorage<IClothingInventory> {
     @Nullable
     @Override
     public NBTBase writeNBT(Capability<IClothingInventory> capability, IClothingInventory instance, EnumFacing side) {

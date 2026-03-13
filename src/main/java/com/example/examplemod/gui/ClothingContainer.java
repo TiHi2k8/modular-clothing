@@ -1,57 +1,61 @@
 package com.example.examplemod.gui;
 
-import com.example.examplemod.capability.ClothingCapabilityProvider;
+import com.example.examplemod.capability.ClothingInventorySlot;
 import com.example.examplemod.capability.IClothingInventory;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.inventory.Container;
 import net.minecraft.inventory.Slot;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemArmor;
 import net.minecraft.item.ItemStack;
 
-/**
- * Container for the modular clothing GUI.
- * Contains 8 clothing slots + the standard player inventory (27 + 9 hotbar).
- */
 public class ClothingContainer extends Container {
-
     private final IClothingInventory clothingInventory;
+    private final EntityPlayer player;
 
-    public ClothingContainer(InventoryPlayer playerInv, IClothingInventory clothingInventory) {
+    public ClothingContainer(InventoryPlayer playerInventory, IClothingInventory clothingInventory, EntityPlayer player) {
         this.clothingInventory = clothingInventory;
+        this.player = player;
 
-        // --- Clothing Slots (8 slots) ---
-        // Arranged in a visual layout representing the body:
-        //       [Head]          -> slot index 0   (gui slot 0)
-        // [L.Arm][Chest][R.Arm] -> slot index 2,3,1  (gui slot 1,2,3)
-        //   [L.Leg]  [R.Leg]    -> slot index 5,4    (gui slot 4,5)
-        //   [L.Foot]  [R.Foot]  -> slot index 7,6    (gui slot 6,7)
+        // Add Clothing Slots (Custom positions)
+        // Layout:
+        // L-Leg(5)  L-Arm(2)  Head(0)  R-Arm(1)  R-Leg(4)
+        //           Chest(3)
+        // Just an example layout, I will use a vertical column or something standard.
+        // Let's emulate 3x2 grid or similar near player model.
 
-        // Head - center top
-        addSlotToContainer(new ClothingSlot(clothingInventory, IClothingInventory.SLOT_HEAD, 80, 8));
+        // Head
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 0, 80, 8, ClothingInventorySlot.HEAD));
+        // Chest
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 3, 80, 26, ClothingInventorySlot.CHEST));
 
-        // Left Arm, Chest, Right Arm - middle row
-        addSlotToContainer(new ClothingSlot(clothingInventory, IClothingInventory.SLOT_LEFT_ARM, 50, 30));
-        addSlotToContainer(new ClothingSlot(clothingInventory, IClothingInventory.SLOT_CHEST, 80, 30));
-        addSlotToContainer(new ClothingSlot(clothingInventory, IClothingInventory.SLOT_RIGHT_ARM, 110, 30));
+        // Right Arm
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 1, 98, 26, ClothingInventorySlot.RIGHT_ARM));
+        // Left Arm
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 2, 62, 26, ClothingInventorySlot.LEFT_ARM));
 
-        // Left Leg, Right Leg - bottom row
-        addSlotToContainer(new ClothingSlot(clothingInventory, IClothingInventory.SLOT_LEFT_LEG, 65, 52));
-        addSlotToContainer(new ClothingSlot(clothingInventory, IClothingInventory.SLOT_RIGHT_LEG, 95, 52));
+        // Right Leg
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 4, 98, 44, ClothingInventorySlot.RIGHT_LEG));
+        // Left Leg
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 5, 62, 44, ClothingInventorySlot.LEFT_LEG));
 
-        // Left Foot, Right Foot - below legs
-        addSlotToContainer(new ClothingSlot(clothingInventory, IClothingInventory.SLOT_LEFT_FOOT, 65, 70));
-        addSlotToContainer(new ClothingSlot(clothingInventory, IClothingInventory.SLOT_RIGHT_FOOT, 95, 70));
+        // Right Foot
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 6, 98, 62, ClothingInventorySlot.RIGHT_FOOT));
+        // Left Foot
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 7, 62, 62, ClothingInventorySlot.LEFT_FOOT));
 
-        // --- Player Inventory (main 27 slots) ---
-        for (int row = 0; row < 3; row++) {
-            for (int col = 0; col < 9; col++) {
-                addSlotToContainer(new Slot(playerInv, col + row * 9 + 9, 8 + col * 18, 102 + row * 18));
+
+        // Player Inventory
+        for (int i = 0; i < 3; ++i) {
+            for (int j = 0; j < 9; ++j) {
+                this.addSlotToContainer(new Slot(playerInventory, j + i * 9 + 9, 8 + j * 18, 84 + i * 18));
             }
         }
 
-        // --- Player Hotbar (9 slots) ---
-        for (int col = 0; col < 9; col++) {
-            addSlotToContainer(new Slot(playerInv, col, 8 + col * 18, 160));
+        // Hotbar
+        for (int k = 0; k < 9; ++k) {
+            this.addSlotToContainer(new Slot(playerInventory, k, 8 + k * 18, 142));
         }
     }
 
@@ -60,61 +64,62 @@ public class ClothingContainer extends Container {
         return true;
     }
 
-    /**
-     * Handle shift-click transfers between clothing slots and player inventory.
-     */
     @Override
     public ItemStack transferStackInSlot(EntityPlayer playerIn, int index) {
-        ItemStack returnStack = ItemStack.EMPTY;
-        Slot slot = inventorySlots.get(index);
+        ItemStack itemstack = ItemStack.EMPTY;
+        Slot slot = this.inventorySlots.get(index);
 
         if (slot != null && slot.getHasStack()) {
-            ItemStack slotStack = slot.getStack();
-            returnStack = slotStack.copy();
+            ItemStack itemstack1 = slot.getStack();
+            itemstack = itemstack1.copy();
 
-            // Number of clothing slots
-            final int clothingSlotCount = IClothingInventory.SLOT_COUNT;
-            // Total player inventory slots (27 main + 9 hotbar)
-            final int playerInvStart = clothingSlotCount;
-            final int playerInvEnd = playerInvStart + 36;
-
-            if (index < clothingSlotCount) {
-                // Transfer from clothing slot to player inventory
-                if (!mergeItemStack(slotStack, playerInvStart, playerInvEnd, true)) {
-                    return ItemStack.EMPTY;
+            if (index < 8) { // Clothing slots to Inventory
+                if (!this.mergeItemStack(itemstack1, 8, 44, true)) {
+                   return ItemStack.EMPTY;
                 }
-            } else {
-                // Transfer from player inventory to clothing slot
-                boolean merged = false;
-                for (int i = 0; i < clothingSlotCount; i++) {
-                    Slot clothingSlot = inventorySlots.get(i);
-                    if (clothingSlot instanceof ClothingSlot && ((ClothingSlot) clothingSlot).isItemValid(slotStack)) {
-                        if (!clothingSlot.getHasStack()) {
-                            if (mergeItemStack(slotStack, i, i + 1, false)) {
-                                merged = true;
-                                break;
-                            }
-                        }
+            } else { // Inventory to Clothing slots
+                // Try to merge into appropriate clothing slot
+                Item item = itemstack1.getItem();
+
+                // Check if valid for HEAD
+                if (item.isValidArmor(itemstack1, net.minecraft.inventory.EntityEquipmentSlot.HEAD, playerIn)) {
+                    if (!mergeItemStack(itemstack1, 0, 1, false)); // Try Head
+                }
+
+                // Check if valid for CHEST (if not fully merged)
+                if (!itemstack1.isEmpty() && item.isValidArmor(itemstack1, net.minecraft.inventory.EntityEquipmentSlot.CHEST, playerIn)) {
+                    // Try chest first, then arms
+                    if (!mergeItemStack(itemstack1, 3, 4, false)) {
+                         if (!mergeItemStack(itemstack1, 1, 3, false)); // Try arms (1 and 2)
                     }
                 }
-                if (!merged) {
-                    return ItemStack.EMPTY;
+
+                // Check if valid for LEGS
+                if (!itemstack1.isEmpty() && item.isValidArmor(itemstack1, net.minecraft.inventory.EntityEquipmentSlot.LEGS, playerIn)) {
+                    // Try legs
+                    if (!mergeItemStack(itemstack1, 4, 6, false)); // Try legs (4 and 5)
+                }
+
+                // Check if valid for FEET
+                if (!itemstack1.isEmpty() && item.isValidArmor(itemstack1, net.minecraft.inventory.EntityEquipmentSlot.FEET, playerIn)) {
+                     // Try feet
+                    if (!mergeItemStack(itemstack1, 6, 8, false)); // Try feet (6 and 7)
                 }
             }
 
-            if (slotStack.isEmpty()) {
+            if (itemstack1.isEmpty()) {
                 slot.putStack(ItemStack.EMPTY);
             } else {
                 slot.onSlotChanged();
             }
 
-            if (slotStack.getCount() == returnStack.getCount()) {
+            if (itemstack1.getCount() == itemstack.getCount()) {
                 return ItemStack.EMPTY;
             }
 
-            slot.onTake(playerIn, slotStack);
+            slot.onTake(playerIn, itemstack1);
         }
 
-        return returnStack;
+        return itemstack;
     }
 }
