@@ -43,7 +43,7 @@ public class ClothingRenderLayer implements LayerRenderer<AbstractClientPlayer> 
             ClothingInventorySlot slotType = ClothingInventorySlot.fromIndex(i);
             EntityEquipmentSlot vanillaSlot = slotType.getVanillaSlot();
 
-            if (!item.isValidArmor(stack, vanillaSlot, player)) continue;
+            // if (!item.isValidArmor(stack, vanillaSlot, player)) continue;
 
             // Select default model
             ModelBiped defaultModel = vanillaSlot == EntityEquipmentSlot.LEGS ? this.modelLeggings : this.modelArmor;
@@ -56,58 +56,85 @@ public class ClothingRenderLayer implements LayerRenderer<AbstractClientPlayer> 
                 model = defaultModel;
             }
 
-            // Sync attributes
-            model.setModelAttributes(this.renderer.getMainModel());
-            model.setLivingAnimations(player, limbSwing, limbSwingAmount, partialTicks);
+            try {
+                // Sync attributes
+                model.setModelAttributes(this.renderer.getMainModel());
+                model.setLivingAnimations(player, limbSwing, limbSwingAmount, partialTicks);
 
-            // Hide all parts first
-            model.bipedHead.showModel = false;
-            model.bipedHeadwear.showModel = false;
-            model.bipedBody.showModel = false;
-            model.bipedRightArm.showModel = false;
-            model.bipedLeftArm.showModel = false;
-            model.bipedRightLeg.showModel = false;
-            model.bipedLeftLeg.showModel = false;
+                // Hide all parts first
+                model.bipedHead.showModel = false;
+                model.bipedHeadwear.showModel = false;
+                model.bipedBody.showModel = false;
+                model.bipedRightArm.showModel = false;
+                model.bipedLeftArm.showModel = false;
+                model.bipedRightLeg.showModel = false;
+                model.bipedLeftLeg.showModel = false;
 
-            // Enable specific part based on clothing slot
-            switch (slotType) {
-                case HEAD:
-                    model.bipedHead.showModel = true;
-                    model.bipedHeadwear.showModel = true;
-                    break;
-                case CHEST:
-                    model.bipedBody.showModel = true;
-                    break;
-                case RIGHT_ARM:
-                    model.bipedRightArm.showModel = true;
-                    break;
-                case LEFT_ARM:
-                    model.bipedLeftArm.showModel = true;
-                    break;
-                case RIGHT_LEG:
-                    model.bipedRightLeg.showModel = true;
-                    break;
-                case LEFT_LEG:
-                    // Usually leg armor covers both legs, but we want 1.
-                    model.bipedLeftLeg.showModel = true;
-                    break;
-                case RIGHT_FOOT:
-                    model.bipedRightLeg.showModel = true;
-                    break;
-                case LEFT_FOOT:
-                    model.bipedLeftLeg.showModel = true;
-                    break;
-            }
+                // Enable specific part based on clothing slot
+                switch (slotType) {
+                    case HEAD:
+                        model.bipedHead.showModel = true;
+                        model.bipedHeadwear.showModel = true;
+                        break;
+                    case CHEST:
+                        model.bipedBody.showModel = true;
+                        break;
+                    case RIGHT_ARM:
+                        model.bipedRightArm.showModel = true;
+                        // For arms, if model has arms, render them.
+                        break;
+                    case LEFT_ARM:
+                        model.bipedLeftArm.showModel = true;
+                        break;
+                    case RIGHT_LEG:
+                        model.bipedRightLeg.showModel = true;
+                        break;
+                    case LEFT_LEG:
+                        // Usually leg armor covers both legs, but we want 1.
+                        model.bipedLeftLeg.showModel = true;
+                        break;
+                    case RIGHT_FOOT:
+                        // Feet usually use boots model which is modelArmor (1.0F) or similar?
+                        // Actually feet are usually layer 1 (boots).
+                        // If model is leggings, legs are used. If model is armor (boots), feet are part of legs?
+                        // ModelBiped doesn't have feet. It has legs.
+                        // So for feet slot, we rely on texture transparency or model shape.
+                        // We enable leg part.
+                        model.bipedRightLeg.showModel = true;
+                        break;
+                    case LEFT_FOOT:
+                        model.bipedLeftLeg.showModel = true;
+                        break;
+                }
 
-            // Render
-            // Note: type is null for base texture
-            String texturePath = item.getArmorTexture(stack, player, vanillaSlot, null);
-            if (texturePath != null) {
-                this.renderer.bindTexture(new ResourceLocation(texturePath));
-                GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-                model.render(player, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, scale);
+                // Render
+                // Note: type is null for base texture
+                String texturePath = item.getArmorTexture(stack, player, vanillaSlot, null);
+                if (texturePath == null) {
+                    // Fallback to standard texture path if null
+                     if (item instanceof ItemArmor) {
+                        ItemArmor armorItem = (ItemArmor) item;
+                        texturePath = String.format("%s:textures/models/armor/%s_layer_%d.png",
+                            getModId(item), armorItem.getArmorMaterial().getName(), (vanillaSlot == EntityEquipmentSlot.LEGS ? 2 : 1));
+                    }
+                }
+
+                if (texturePath != null) {
+                    this.renderer.bindTexture(new ResourceLocation(texturePath));
+                    GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+                    model.render(player, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, scale);
+                }
+            } catch (Exception e) {
+                // Log exception safely
+                System.err.println("Error rendering clothing layer: " + e.getMessage());
             }
         }
+    }
+
+    // Helper to get mod id
+    private String getModId(Item item) {
+        ResourceLocation reg = item.getRegistryName();
+        return reg != null ? reg.getResourceDomain() : "minecraft";
     }
 
     @Override

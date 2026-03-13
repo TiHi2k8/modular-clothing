@@ -26,24 +26,24 @@ public class ClothingContainer extends Container {
         // Let's emulate 3x2 grid or similar near player model.
 
         // Head
-        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 0, 80, 8, ClothingInventorySlot.HEAD));
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 0, 80, 8, ClothingInventorySlot.HEAD, player));
         // Chest
-        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 3, 80, 26, ClothingInventorySlot.CHEST));
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 3, 80, 26, ClothingInventorySlot.CHEST, player));
 
         // Right Arm
-        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 1, 98, 26, ClothingInventorySlot.RIGHT_ARM));
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 1, 98, 26, ClothingInventorySlot.RIGHT_ARM, player));
         // Left Arm
-        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 2, 62, 26, ClothingInventorySlot.LEFT_ARM));
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 2, 62, 26, ClothingInventorySlot.LEFT_ARM, player));
 
         // Right Leg
-        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 4, 98, 44, ClothingInventorySlot.RIGHT_LEG));
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 4, 98, 44, ClothingInventorySlot.RIGHT_LEG, player));
         // Left Leg
-        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 5, 62, 44, ClothingInventorySlot.LEFT_LEG));
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 5, 62, 44, ClothingInventorySlot.LEFT_LEG, player));
 
         // Right Foot
-        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 6, 98, 62, ClothingInventorySlot.RIGHT_FOOT));
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 6, 98, 62, ClothingInventorySlot.RIGHT_FOOT, player));
         // Left Foot
-        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 7, 62, 62, ClothingInventorySlot.LEFT_FOOT));
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 7, 62, 62, ClothingInventorySlot.LEFT_FOOT, player));
 
 
         // Player Inventory

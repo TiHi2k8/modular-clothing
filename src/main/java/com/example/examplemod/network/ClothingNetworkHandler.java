@@ -14,5 +14,14 @@ public class ClothingNetworkHandler {
         INSTANCE.registerMessage(PacketSyncClothingInventory.Handler.class, PacketSyncClothingInventory.class, packetId++, Side.CLIENT);
         INSTANCE.registerMessage(PacketOpenClothingGUI.Handler.class, PacketOpenClothingGUI.class, packetId++, Side.SERVER);
     }
-}
 
+    // Helper method to sync inventory to all tracking players
+    public static void sendToAllTracking(PacketSyncClothingInventory packet, net.minecraft.entity.Entity entity) {
+        INSTANCE.sendToAllTracking(packet, entity);
+    }
+
+    // Helper method to sync inventory to self
+    public static void sendTo(PacketSyncClothingInventory packet, net.minecraft.entity.player.EntityPlayerMP player) {
+        INSTANCE.sendTo(packet, player);
+    }
+}
