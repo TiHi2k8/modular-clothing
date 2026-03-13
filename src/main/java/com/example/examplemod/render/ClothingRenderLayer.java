@@ -40,7 +40,7 @@ public class ClothingRenderLayer implements LayerRenderer<AbstractClientPlayer> 
             Item item = stack.getItem();
             // Check if item is valid armor for the slot (or generally valid armor)
             // We use the slot's target vanilla slot for checking validity and model retrieval
-            ClothingInventorySlot slotType = ClothingInventorySlot.fromIndex(i);
+            ClothingInventorySlot slotType = ClothingInventorySlot.fromIndex(i % 8);
             EntityEquipmentSlot vanillaSlot = slotType.getVanillaSlot();
 
             // if (!item.isValidArmor(stack, vanillaSlot, player)) continue;
@@ -121,8 +121,30 @@ public class ClothingRenderLayer implements LayerRenderer<AbstractClientPlayer> 
 
                 if (texturePath != null) {
                     this.renderer.bindTexture(new ResourceLocation(texturePath));
+                    GlStateManager.pushMatrix();
+
+                    // Apply simpler layer scaling to prevent Z-fighting
+                    int layerIndex = i / 8;
+                    if (layerIndex > 0) {
+                        float s = 1.0F + (layerIndex * 0.06F); // Slight scaling per layer
+                        GlStateManager.scale(s, s, s);
+                        // Also might need translation to keep feet on ground?
+                        // Scaling from center (0,0,0) usually works for players if origin is feet/center.
+                        // Minecraft player origin is feet. Scaling up moves head up.
+                        // Usually armor layers use 'size' parameter in Model constructor, which is inflation.
+                        // GL Scale scales everything.
+                        // Model constructor 'size' inflates vertices along normal.
+                        // We can't easily change model inflation.
+                        // Let's rely on standard rendering. Z-fighting might happen for identical models.
+                        // If scale causes issues (floating feet), remove it.
+                        // But without it, identical layers flicker.
+                        // Shift Y down to compensate?
+                        GlStateManager.translate(0, - (s - 1.0F) * 1.5F, 0);
+                    }
+
                     GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
                     model.render(player, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, scale);
+                    GlStateManager.popMatrix();
                 }
             } catch (Exception e) {
                 // Log exception safely

@@ -9,5 +9,12 @@ public interface IClothingInventory extends INBTSerializable<NBTTagCompound> {
     ItemStack getStackInSlot(int slot);
     int getSlots();
     void copyFrom(IClothingInventory other);
+
+    // Layer support
+    int getLayerCount();
+    void addLayer();
+    void removeLayer();
+    ItemStack getStackInLayer(int layer, int slot);
+    void setStackInLayer(int layer, int slot, ItemStack stack);
 }
 

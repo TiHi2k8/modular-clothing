@@ -13,37 +13,35 @@ import net.minecraft.item.ItemStack;
 public class ClothingContainer extends Container {
     private final IClothingInventory clothingInventory;
     private final EntityPlayer player;
+    private int currentLayer = 0;
 
     public ClothingContainer(InventoryPlayer playerInventory, IClothingInventory clothingInventory, EntityPlayer player) {
         this.clothingInventory = clothingInventory;
         this.player = player;
 
-        // Add Clothing Slots (Custom positions)
-        // Layout:
-        // L-Leg(5)  L-Arm(2)  Head(0)  R-Arm(1)  R-Leg(4)
-        //           Chest(3)
-        // Just an example layout, I will use a vertical column or something standard.
-        // Let's emulate 3x2 grid or similar near player model.
+        // Use a supplier that refers to 'currentLayer' field
+        java.util.function.Supplier<Integer> layerSupplier = this::getCurrentLayer;
 
+        // Add Clothing Slots with Layer Supplier
         // Head
-        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 0, 80, 8, ClothingInventorySlot.HEAD, player));
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 0, 120, 8, ClothingInventorySlot.HEAD, player, layerSupplier));
         // Chest
-        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 3, 80, 26, ClothingInventorySlot.CHEST, player));
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 3, 120, 26, ClothingInventorySlot.CHEST, player, layerSupplier));
 
         // Right Arm
-        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 1, 98, 26, ClothingInventorySlot.RIGHT_ARM, player));
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 1, 138, 26, ClothingInventorySlot.RIGHT_ARM, player, layerSupplier));
         // Left Arm
-        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 2, 62, 26, ClothingInventorySlot.LEFT_ARM, player));
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 2, 102, 26, ClothingInventorySlot.LEFT_ARM, player, layerSupplier));
 
         // Right Leg
-        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 4, 98, 44, ClothingInventorySlot.RIGHT_LEG, player));
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 4, 138, 44, ClothingInventorySlot.RIGHT_LEG, player, layerSupplier));
         // Left Leg
-        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 5, 62, 44, ClothingInventorySlot.LEFT_LEG, player));
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 5, 102, 44, ClothingInventorySlot.LEFT_LEG, player, layerSupplier));
 
         // Right Foot
-        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 6, 98, 62, ClothingInventorySlot.RIGHT_FOOT, player));
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 6, 138, 62, ClothingInventorySlot.RIGHT_FOOT, player, layerSupplier));
         // Left Foot
-        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 7, 62, 62, ClothingInventorySlot.LEFT_FOOT, player));
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 7, 102, 62, ClothingInventorySlot.LEFT_FOOT, player, layerSupplier));
 
 
         // Player Inventory
@@ -54,8 +52,8 @@ public class ClothingContainer extends Container {
         }
 
         // Hotbar
-        for (int k = 0; k < 9; ++k) {
-            this.addSlotToContainer(new Slot(playerInventory, k, 8 + k * 18, 142));
+        for (int i = 0; i < 9; ++i) {
+            this.addSlotToContainer(new Slot(playerInventory, i, 8 + i * 18, 142));
         }
     }
 
@@ -121,5 +119,19 @@ public class ClothingContainer extends Container {
         }
 
         return itemstack;
+    }
+
+    public void setCurrentLayer(int layer) {
+        if (layer >= 0) {
+            // Ensure layer exists? Or just clamp?
+            // If user clicks "+", we might need to add layer on server.
+            // But this method runs on server?
+            // The packet handles logic.
+            this.currentLayer = layer;
+        }
+    }
+
+    public int getCurrentLayer() {
+        return currentLayer;
     }
 }

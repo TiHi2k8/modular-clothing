@@ -6,22 +6,54 @@ import com.example.examplemod.network.ClothingNetworkHandler;
 import com.example.examplemod.network.PacketSyncClothingInventory;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.inventory.EntityEquipmentSlot;
 import net.minecraft.inventory.Slot;
 import net.minecraft.item.ItemArmor;
 import net.minecraft.item.ItemStack;
+
+import java.util.function.Supplier;
 
 public class ClothingInventorySlotHandler extends Slot {
     private final IClothingInventory itemHandler;
     private final int index;
     private final ClothingInventorySlot slotType;
     private final EntityPlayer player;
+    private final Supplier<Integer> layerSupplier;
 
-    public ClothingInventorySlotHandler(IClothingInventory itemHandler, int index, int xPosition, int yPosition, ClothingInventorySlot slotType, EntityPlayer player) {
+    public ClothingInventorySlotHandler(IClothingInventory itemHandler, int index, int xPosition, int yPosition, ClothingInventorySlot slotType, EntityPlayer player, Supplier<Integer> layerSupplier) {
         super(null, index, xPosition, yPosition);
         this.itemHandler = itemHandler;
         this.index = index;
         this.slotType = slotType;
         this.player = player;
+        this.layerSupplier = layerSupplier;
+        this.setSlotBackground();
+    }
+
+    // Legacy constructor just for smooth migration (optional)
+    public ClothingInventorySlotHandler(IClothingInventory itemHandler, int index, int xPosition, int yPosition, ClothingInventorySlot slotType, EntityPlayer player) {
+        this(itemHandler, index, xPosition, yPosition, slotType, player, () -> 0);
+    }
+
+    private void setSlotBackground() {
+        switch (slotType) {
+            case HEAD:
+                this.setBackgroundName("minecraft:items/empty_armor_slot_helmet");
+                break;
+            case CHEST:
+            case RIGHT_ARM:
+            case LEFT_ARM:
+                this.setBackgroundName("minecraft:items/empty_armor_slot_chestplate");
+                break;
+            case RIGHT_LEG:
+            case LEFT_LEG:
+                this.setBackgroundName("minecraft:items/empty_armor_slot_leggings");
+                break;
+            case RIGHT_FOOT:
+            case LEFT_FOOT:
+                this.setBackgroundName("minecraft:items/empty_armor_slot_boots");
+                break;
+        }
     }
 
     @Override
@@ -33,13 +65,29 @@ public class ClothingInventorySlotHandler extends Slot {
 
     @Override
     public ItemStack getStack() {
-        return itemHandler.getStackInSlot(index);
+        return itemHandler.getStackInLayer(getLayer(), index);
     }
 
     @Override
     public void putStack(ItemStack stack) {
-        itemHandler.setStackInSlot(index, stack);
+        itemHandler.setStackInLayer(getLayer(), index, stack);
         this.onSlotChanged();
+    }
+
+    // Note: getSlotStackLimit / decrStackSize must also use layer
+    @Override
+    public ItemStack decrStackSize(int amount) {
+        ItemStack stack = getStack();
+        if (stack.isEmpty()) return ItemStack.EMPTY;
+        ItemStack taken = stack.splitStack(amount);
+        if (stack.isEmpty()) {
+            putStack(ItemStack.EMPTY);
+        }
+        return taken;
+    }
+
+    private int getLayer() {
+        return layerSupplier.get();
     }
 
     @Override
@@ -54,17 +102,6 @@ public class ClothingInventorySlotHandler extends Slot {
     @Override
     public int getSlotStackLimit() {
         return 1;
-    }
-
-    @Override
-    public ItemStack decrStackSize(int amount) {
-        ItemStack stack = itemHandler.getStackInSlot(index);
-        if (stack.isEmpty()) return ItemStack.EMPTY;
-        ItemStack taken = stack.splitStack(amount);
-        if (stack.isEmpty()) {
-            itemHandler.setStackInSlot(index, ItemStack.EMPTY);
-        }
-        return taken;
     }
 
     // Override this to prevent NPE since we pass null inventory to super
