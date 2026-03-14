@@ -86,6 +86,11 @@ public class ClothingInventorySlotHandler extends Slot {
         return taken;
     }
 
+    /** Returns the capability-side slot index (0-7) this handler targets. */
+    public int getCapabilitySlotIndex() {
+        return index;
+    }
+
     private int getLayer() {
         return layerSupplier.get();
     }

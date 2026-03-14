@@ -17,42 +17,51 @@ public class DynamXHelper {
     private static boolean isPartForSlot(String fieldName, ClothingInventorySlot slot) {
         String lower = fieldName.toLowerCase();
 
-        // Helper booleans for classification
-        boolean isArm = lower.contains("arm") || lower.contains("hand") || lower.contains("sleeve") || lower.contains("shoulder");
-        boolean isLeg = lower.contains("leg") || lower.contains("foot") || lower.contains("boot") || lower.contains("shoe") || lower.contains("pants");
+        // Arm: hand, sleeve, shoulder — but NOT leg/foot parts
+        boolean isArm = (lower.contains("arm") || lower.contains("hand") || lower.contains("sleeve") || lower.contains("shoulder"))
+                        && !lower.contains("leg") && !lower.contains("foot") && !lower.contains("boot") && !lower.contains("shoe");
+
+        // Foot: only explicit foot/boot/shoe/sock names
+        boolean isFoot = lower.contains("foot") || lower.contains("boot") || lower.contains("shoe") || lower.contains("sock");
+
+        // Leg-proper: leg/pants/thigh/shin/knee — but NOT foot parts
+        boolean isLegProper = (lower.contains("leg") || lower.contains("pants") || lower.contains("thigh") || lower.contains("shin") || lower.contains("knee"))
+                              && !isFoot;
+
         boolean isRight = lower.contains("right");
-        boolean isLeft = lower.contains("left");
+        boolean isLeft  = lower.contains("left");
 
         switch (slot) {
             case HEAD:
-                return lower.contains("head") || lower.contains("helmet") || lower.contains("hat") || lower.contains("mask") || lower.contains("face") || lower.contains("hood");
+                return lower.contains("head") || lower.contains("helmet") || lower.contains("hat")
+                    || lower.contains("mask") || lower.contains("face") || lower.contains("hood");
 
             case CHEST:
-                // Show body parts. Usually this includes arms for shirts/jackets.
-                // But strictly exclude legs.
-                boolean isBodyOrArm = lower.contains("body") || lower.contains("chest") ||
-                                     lower.contains("torso") || lower.contains("jacket") ||
-                                     lower.contains("shirt") || lower.contains("vest") ||
-                                     isArm;
-                return isBodyOrArm && !isLeg;
+                // Body + arms for shirts/jackets; exclude all leg/foot geometry
+                boolean isBody = lower.contains("body") || lower.contains("chest") || lower.contains("torso")
+                              || lower.contains("jacket") || lower.contains("shirt") || lower.contains("vest");
+                return (isBody || isArm) && !isLegProper && !isFoot;
 
             case RIGHT_ARM:
+                // Must be explicitly arm and on the right side; no leg/foot
                 return isArm && isRight;
 
             case LEFT_ARM:
                 return isArm && isLeft;
 
             case RIGHT_LEG:
-                return isLeg && isRight;
+                // Leg-proper geometry on the right — excludes boot/foot parts
+                return isLegProper && isRight;
 
             case LEFT_LEG:
-                return isLeg && isLeft;
+                return isLegProper && isLeft;
 
             case RIGHT_FOOT:
-                return isLeg && isRight && (lower.contains("foot") || lower.contains("boot") || lower.contains("shoe") || lower.contains("sock"));
+                // Foot/boot geometry on the right
+                return isFoot && isRight;
 
             case LEFT_FOOT:
-                return isLeg && isLeft && (lower.contains("foot") || lower.contains("boot") || lower.contains("shoe") || lower.contains("sock"));
+                return isFoot && isLeft;
 
             default:
                 return false;
@@ -61,10 +70,11 @@ public class DynamXHelper {
 
     private static boolean isKnownPart(String fieldName) {
         String lower = fieldName.toLowerCase();
-        return lower.contains("head") || lower.contains("helmet") || lower.contains("hat") || lower.contains("mask") || lower.contains("hood") ||
-               lower.contains("body") || lower.contains("chest") || lower.contains("torso") || lower.contains("jacket") || lower.contains("shirt") || lower.contains("vest") ||
-               lower.contains("arm") || lower.contains("sleeve") || lower.contains("shoulder") || lower.contains("hand") ||
-               lower.contains("leg") || lower.contains("foot") || lower.contains("feet") || lower.contains("boot") || lower.contains("shoe") || lower.contains("pants");
+        return lower.contains("head") || lower.contains("helmet") || lower.contains("hat") || lower.contains("mask") || lower.contains("hood")
+            || lower.contains("body") || lower.contains("chest") || lower.contains("torso") || lower.contains("jacket") || lower.contains("shirt") || lower.contains("vest")
+            || lower.contains("arm") || lower.contains("sleeve") || lower.contains("shoulder") || lower.contains("hand")
+            || lower.contains("leg") || lower.contains("thigh") || lower.contains("shin") || lower.contains("knee") || lower.contains("pants")
+            || lower.contains("foot") || lower.contains("feet") || lower.contains("boot") || lower.contains("shoe") || lower.contains("sock");
     }
 
     public static Map<ModelRenderer, Boolean> updateDynamXModel(ModelBiped model, ClothingInventorySlot slot) {

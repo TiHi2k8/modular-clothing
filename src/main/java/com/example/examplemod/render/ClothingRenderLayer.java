@@ -56,16 +56,15 @@ public class ClothingRenderLayer implements LayerRenderer<AbstractClientPlayer> 
                 model = defaultModel;
             }
 
-            // Attempt to handle DynamX/OBJ models visibility for specific parts (and capture state)
-            java.util.Map<net.minecraft.client.model.ModelRenderer, Boolean> backupState =
-                DynamXHelper.updateDynamXModel(model, slotType);
+            java.util.Map<net.minecraft.client.model.ModelRenderer, Boolean> backupState = null;
 
             try {
-                // Sync attributes
+                // Sync attributes — this copies showModel flags from the main player model,
+                // so it must come before our custom visibility setup
                 model.setModelAttributes(this.renderer.getMainModel());
                 model.setLivingAnimations(player, limbSwing, limbSwingAmount, partialTicks);
 
-                // Hide all parts first
+                // Hide all standard biped parts
                 model.bipedHead.showModel = false;
                 model.bipedHeadwear.showModel = false;
                 model.bipedBody.showModel = false;
@@ -74,7 +73,7 @@ public class ClothingRenderLayer implements LayerRenderer<AbstractClientPlayer> 
                 model.bipedRightLeg.showModel = false;
                 model.bipedLeftLeg.showModel = false;
 
-                // Enable specific part based on clothing slot
+                // Show only the standard biped part matching this slot
                 switch (slotType) {
                     case HEAD:
                         model.bipedHead.showModel = true;
@@ -82,10 +81,11 @@ public class ClothingRenderLayer implements LayerRenderer<AbstractClientPlayer> 
                         break;
                     case CHEST:
                         model.bipedBody.showModel = true;
+                        model.bipedRightArm.showModel = true;
+                        model.bipedLeftArm.showModel = true;
                         break;
                     case RIGHT_ARM:
                         model.bipedRightArm.showModel = true;
-                        // For arms, if model has arms, render them.
                         break;
                     case LEFT_ARM:
                         model.bipedLeftArm.showModel = true;
@@ -94,22 +94,20 @@ public class ClothingRenderLayer implements LayerRenderer<AbstractClientPlayer> 
                         model.bipedRightLeg.showModel = true;
                         break;
                     case LEFT_LEG:
-                        // Usually leg armor covers both legs, but we want 1.
                         model.bipedLeftLeg.showModel = true;
                         break;
                     case RIGHT_FOOT:
-                        // Feet usually use boots model which is modelArmor (1.0F) or similar?
-                        // Actually feet are usually layer 1 (boots).
-                        // If model is leggings, legs are used. If model is armor (boots), feet are part of legs?
-                        // ModelBiped doesn't have feet. It has legs.
-                        // So for feet slot, we rely on texture transparency or model shape.
-                        // We enable leg part.
                         model.bipedRightLeg.showModel = true;
                         break;
                     case LEFT_FOOT:
                         model.bipedLeftLeg.showModel = true;
                         break;
                 }
+
+                // DynamX/OBJ custom model support: run AFTER standard biped setup so it is
+                // the final word on custom field visibility (setModelAttributes would have
+                // overwritten an earlier DynamXHelper call for standard fields)
+                backupState = DynamXHelper.updateDynamXModel(model, slotType);
 
                 // Render
                 // Note: type is null for base texture
@@ -125,27 +123,23 @@ public class ClothingRenderLayer implements LayerRenderer<AbstractClientPlayer> 
 
                 if (texturePath != null) {
                     this.renderer.bindTexture(new ResourceLocation(texturePath));
-                    GlStateManager.pushMatrix();
-
-                    // Apply simpler layer scaling to prevent Z-fighting
                     int layerIndex = i / 8;
-                    if (layerIndex > 0) {
-                        float s = 1.0F + (layerIndex * 0.06F); // Slight scaling per layer
-                        GlStateManager.scale(s, s, s);
-                        // Also might need translation to keep feet on ground?
-                        // Scaling from center (0,0,0) usually works for players if origin is feet/center.
-                        // Minecraft player origin is feet. Scaling up moves head up.
-                        // Usually armor layers use 'size' parameter in Model constructor, which is inflation.
-                        // GL Scale scales everything.
-                        // Model constructor 'size' inflates vertices along normal.
-                        // We can't easily change model inflation.
-                        // Let's rely on standard rendering. Z-fighting might happen for identical models.
-                        // If scale causes issues (floating feet), remove it.
-                        // But without it, identical layers flicker.
-                        // Shift Y down to compensate?
-                        GlStateManager.translate(0, - (s - 1.0F) * 1.5F, 0);
-                    }
+                    int slotIndex  = i % 8;
 
+                    // Task 3: apply per-slot custom transform (scale + XYZ offsets)
+                    float[] transform = inventory.getSlotTransform(layerIndex, slotIndex);
+                    float customScale = transform[0];
+                    float ox = transform[1];
+                    float oy = transform[2];
+                    float oz = transform[3];
+
+                    GlStateManager.pushMatrix();
+                    if (ox != 0.0f || oy != 0.0f || oz != 0.0f) {
+                        GlStateManager.translate(ox, oy, oz);
+                    }
+                    if (customScale != 1.0f) {
+                        GlStateManager.scale(customScale, customScale, customScale);
+                    }
                     GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
                     model.render(player, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, scale);
                     GlStateManager.popMatrix();

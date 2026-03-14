@@ -37,24 +37,27 @@ public class PacketChangeClothingLayer implements IMessage {
                 // Also update the player capability if logic requires persistence of "selected layer" (optional)
 
                 IClothingInventory inventory = player.getCapability(ClothingProvider.CLOTHING_CAPABILITY, net.minecraft.util.EnumFacing.UP);
-                if (inventory != null) {
-                    // If requested layer is beyond count, add layers until it exists (simple logic)
-                    while (inventory.getLayerCount() <= message.layer) {
-                        inventory.addLayer();
-                        // Important: Need to save/sync this change!
-                    }
+                if (inventory == null) return;
 
-                    // If the container is open, update it
-                    if (player.openContainer instanceof ClothingContainer) {
-                         ClothingContainer container = (ClothingContainer) player.openContainer;
-                         container.setCurrentLayer(message.layer);
-                         container.detectAndSendChanges(); // Force update of slots
-                    }
+                // Hard cap: never exceed 10 layers (indices 0-9)
+                if (message.layer < 0 || message.layer > 9) return;
 
-                    // Sync because we might have added a layer
-                    ClothingNetworkHandler.sendToAllTracking(new PacketSyncClothingInventory(player), player);
-                    ClothingNetworkHandler.sendTo(new PacketSyncClothingInventory(player), player);
+                // Add layers if the target does not yet exist (addLayer enforces the cap internally)
+                while (inventory.getLayerCount() <= message.layer) {
+                    inventory.addLayer();
                 }
+
+                // Clamp to what actually exists (in case addLayer was blocked by the cap)
+                int targetLayer = Math.min(message.layer, inventory.getLayerCount() - 1);
+
+                if (player.openContainer instanceof ClothingContainer) {
+                    ClothingContainer container = (ClothingContainer) player.openContainer;
+                    container.setCurrentLayer(targetLayer);
+                    container.detectAndSendChanges();
+                }
+
+                ClothingNetworkHandler.sendToAllTracking(new PacketSyncClothingInventory(player), player);
+                ClothingNetworkHandler.sendTo(new PacketSyncClothingInventory(player), player);
             });
             return null;
         }

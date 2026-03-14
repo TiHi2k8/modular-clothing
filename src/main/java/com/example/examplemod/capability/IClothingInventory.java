@@ -16,5 +16,10 @@ public interface IClothingInventory extends INBTSerializable<NBTTagCompound> {
     void removeLayer();
     ItemStack getStackInLayer(int layer, int slot);
     void setStackInLayer(int layer, int slot, ItemStack stack);
+
+    // Per-slot transform: float[4] = { scale, offsetX, offsetY, offsetZ }
+    // Defaults: scale=1.0, offsets=0.0
+    float[] getSlotTransform(int layer, int slot);
+    void setSlotTransform(int layer, int slot, float scale, float offsetX, float offsetY, float offsetZ);
 }
 

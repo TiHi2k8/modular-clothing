@@ -16,8 +16,8 @@ This file is a table of contents for AI agents. It lists **all** key classes and
 ---
 
 ## 🎒 Capability System (`com.example.examplemod.capability`)
-- **`IClothingInventory.java`**: Interface defining the custom clothing inventory (supports layers and slots).
-- **`ClothingInventory.java`**: Default implementation of `IClothingInventory`. Handles NBT serialization/deserialization and layer management.
+- **`IClothingInventory.java`**: Interface defining the custom clothing inventory (supports layers, slots, and per-slot transforms). Added `getSlotTransform` / `setSlotTransform` returning `float[4]{scale, offsetX, offsetY, offsetZ}`.
+- **`ClothingInventory.java`**: Default implementation of `IClothingInventory`. Handles NBT serialization/deserialization, layer management (max 10 layers), and per-slot transform storage.
 - **`ClothingInventorySlot.java`**: Enum mapping internal slot indices (0-7) to physical body parts (`HEAD`, `CHEST`, `RIGHT_ARM`, etc.) and Vanilla `EntityEquipmentSlot`s.
 - **`ClothingProvider.java` / `ClothingStorage.java`**: Forge capability provider and storage classes to attach the inventory to the `EntityPlayer`.
 - **`CapabilityHandler.java`**: Event subscriber that attaches the `CLOTHING_CAPABILITY` to players on `AttachCapabilitiesEvent`.
@@ -26,18 +26,20 @@ This file is a table of contents for AI agents. It lists **all** key classes and
 
 ## 📡 Network & Sync (`com.example.examplemod.network`)
 - **`ClothingNetworkHandler.java`**: Sets up the `SimpleNetworkWrapper` and registers all packets. Contains helper methods to sync data to tracking players.
-- **`PacketUpdateClothingSlot.java`**: Client -> Server. Sent when a player modifies a slot in the custom GUI.
-- **`PacketSyncClothingInventory.java`**: Server -> Client. Full inventory sync packet (used on join, respawn, dimension change, or slot updates).
-- **`PacketChangeClothingLayer.java`**: Client -> Server. Requests changing the currently active clothing layer in the GUI.
-- **`PacketOpenClothingGUI.java`**: Client -> Server. Requests opening the clothing inventory GUI via keybind.
+- **`PacketUpdateClothingSlot.java`**: Client → Server. Sent when a player modifies a slot in the custom GUI.
+- **`PacketSyncClothingInventory.java`**: Server → Client. Full inventory sync packet (used on join, respawn, dimension change, or slot/transform updates).
+- **`PacketChangeClothingLayer.java`**: Client → Server. Requests changing the active clothing layer. Enforces the 10-layer cap server-side.
+- **`PacketOpenClothingGUI.java`**: Client → Server. Requests opening the clothing inventory GUI via keybind.
+- **`PacketUpdateClothingTransform.java`**: Client → Server. Sent by `GuiClothingTransform` when the player confirms new Scale/XYZ offset values for a specific layer+slot.
 
 ---
 
 ## 🖼️ GUI System (`com.example.examplemod.gui`)
 - **`ClothingGuiHandler.java`**: `IGuiHandler` implementation returning the container or GUI screen based on side.
-- **`ClothingContainer.java`**: Server-side inventory logic. Handles slot layout (clothing slots + player inventory + hotbar) and `Shift-Click` transfer logic.
-- **`ClothingGui.java`**: Client-side screen. Renders the GUI texture (`clothing_gui.png`), the player model preview, and layer control buttons (+ / -).
+- **`ClothingContainer.java`**: Server-side inventory logic. Handles slot layout (clothing slots + player inventory + hotbar) and `Shift-Click` transfer logic. `setCurrentLayer` clamps to 0–9.
+- **`ClothingGui.java`**: Client-side screen. Renders the GUI texture, the player model preview, and layer control buttons (+ / −) positioned **above** the player preview. Right-clicking any of the 8 clothing slots opens `GuiClothingTransform`. Remembers the last open layer across GUI sessions via a static field.
 - **`ClothingInventorySlotHandler.java`**: Custom `Slot` implementation linking the GUI to the capability, handling valid armor checks and empty-slot background textures.
+- **`GuiClothingTransform.java`**: Sub-screen opened by right-clicking a clothing slot. Presents four text fields (Scale, X/Y/Z offset). On "Apply" sends `PacketUpdateClothingTransform`; on "Cancel" returns to `ClothingGui`.
 
 ---
 

@@ -122,11 +122,7 @@ public class ClothingContainer extends Container {
     }
 
     public void setCurrentLayer(int layer) {
-        if (layer >= 0) {
-            // Ensure layer exists? Or just clamp?
-            // If user clicks "+", we might need to add layer on server.
-            // But this method runs on server?
-            // The packet handles logic.
+        if (layer >= 0 && layer <= 9) {
             this.currentLayer = layer;
         }
     }
