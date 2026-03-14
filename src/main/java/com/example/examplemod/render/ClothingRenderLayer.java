@@ -173,6 +173,17 @@ public class ClothingRenderLayer implements LayerRenderer<AbstractClientPlayer> 
                     // Apply per-slot transform: float[6] = {scaleX, scaleY, scaleZ, offsetX, offsetY, offsetZ}
                     float[] transform = inventory.getSlotTransform(layerIndex, slotIndex);
 
+                    // Fix for shoes/pants clipping when sneaking
+                    if (player.isSneaking() && (
+                            slotType == ClothingInventorySlot.RIGHT_LEG ||
+                            slotType == ClothingInventorySlot.LEFT_LEG ||
+                            slotType == ClothingInventorySlot.RIGHT_FOOT ||
+                            slotType == ClothingInventorySlot.LEFT_FOOT)) {
+                        float[] modified = transform.clone();
+                        modified[5] += 1.0f; // Move backwards by 1.0f
+                        transform = modified;
+                    }
+
                     if (isDynamX) {
                         // Use the main player model as the reference for pivots, because it has the correct
                         // sneaking/riding offsets applied for the current frame.

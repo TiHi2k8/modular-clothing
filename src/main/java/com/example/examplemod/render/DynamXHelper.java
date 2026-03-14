@@ -144,49 +144,51 @@ public class DynamXHelper {
             ModelRenderer rightFoot = getElement(footArr, 0); // screen right
             ModelRenderer leftFoot  = getElement(footArr, 1); // screen left
 
+            // Adjust for sneaking: Vanilla renders the whole model 0.2F lower when sneaking.
+            // We pass this offset to renderPart to adjust the pivot point Y.
+            float sneakY = player.isSneaking() ? 0.2F : 0.0F;
+            float leftArmSneak = player.isSneaking() ? -0.2F : 0.0F;
+            float bodySneak = player.isSneaking() ? -0.4F : 0.0F;
+            float leftLegSneak = player.isSneaking() ? -0.6F : 0.0F;
+            float rightLegSneak = player.isSneaking() ? -0.8F : 0.0F;
+            float leftFootSneak = player.isSneaking() ? -1.0F : 0.0F;
+            float rightFootSneak = player.isSneaking() ? -1.2F : 0.0F;
+
             switch (slot) {
                 case CHEST:
-                    renderPart(body, defaultModel.bipedBody, transform, scale, 0.0F, 0.0F, 0.0F);
+                    renderPart(body, defaultModel.bipedBody, transform, scale, 0.0F, 0.0F, 0.0F, bodySneak);
                     if (chestShowArms) {
-                        // Also show arms when chest arms mode is active
-                        // Arms need outward offset: Left(+X), Right(-X)
-                        // arms[0] (Right Slot/Player Left) -> +X
-                        // arms[1] (Left Slot/Player Right) -> -X
-                        renderPart(rightArm, defaultModel.bipedLeftArm, transform, scale, 0.03F, 0.01F, 0.0F);
-                        renderPart(leftArm,  defaultModel.bipedRightArm, transform, scale, -0.03F, 0.01F, 0.0F);
+                        renderPart(rightArm, defaultModel.bipedLeftArm, transform, scale, 0.03F, 0.01F, 0.0F, 0.0F);
+                        renderPart(leftArm,  defaultModel.bipedRightArm, transform, scale, -0.03F, 0.01F, 0.0F, leftArmSneak);
                     }
                     break;
                 case RIGHT_ARM:
-                    renderPart(rightArm, defaultModel.bipedLeftArm, transform, scale, 0.03F, 0.01F, 0.0F);
+                    renderPart(rightArm, defaultModel.bipedLeftArm, transform, scale, 0.03F, 0.01F, 0.0F, 0.0F);
                     break;
                 case LEFT_ARM:
-                    renderPart(leftArm, defaultModel.bipedRightArm, transform, scale, -0.03F, 0.01F, 0.0F);
+                    renderPart(leftArm, defaultModel.bipedRightArm, transform, scale, -0.03F, 0.01F, 0.0F, leftArmSneak);
                     break;
                 case RIGHT_LEG:
-                    // Only render if pantsLegsMode is TRUE (covering both legs) OR this is the separate Right Slot
-                    renderPart(rightLeg, defaultModel.bipedLeftLeg, transform, scale, 0.0F, 0.0F, 0.0F);
+                    renderPart(rightLeg, defaultModel.bipedLeftLeg, transform, scale, 0.0F, 0.0F, 0.0F, leftLegSneak);
                     if (pantsLegsMode) {
-                        renderPart(leftLeg, defaultModel.bipedRightLeg, transform, scale, 0.0F, 0.0F, 0.0F);
-                        renderPart(body, defaultModel.bipedBody, transform, scale, 0.0F, 0.0F, 0.0F);
+                        renderPart(leftLeg, defaultModel.bipedRightLeg, transform, scale, 0.0F, 0.0F, 0.0F, rightLegSneak);
+                        renderPart(body, defaultModel.bipedBody, transform, scale, 0.0F, 0.0F, 0.0F, bodySneak);
                     }
                     break;
                 case LEFT_LEG:
-                    // Render ONLY if separate mode
                     if (!pantsLegsMode) {
-                        renderPart(leftLeg, defaultModel.bipedRightLeg, transform, scale, 0.0F, 0.0F, 0.0F);
+                        renderPart(leftLeg, defaultModel.bipedRightLeg, transform, scale, 0.0F, 0.0F, 0.0F, rightLegSneak);
                     }
                     break;
                 case RIGHT_FOOT:
-                    // Shoes: 0.06 -> 0.045
-                    // 0.0150 further up
-                    renderPart(rightFoot, defaultModel.bipedLeftLeg, transform, scale, 0.005F, 0.045F, 0.0F);
+                    renderPart(rightFoot, defaultModel.bipedLeftLeg, transform, scale, 0.005F, 0.045F, 0.0F, leftFootSneak);
                     if (shoesFeetMode) {
-                        renderPart(leftFoot, defaultModel.bipedRightLeg, transform, scale, -0.005F, 0.045F, 0.0F);
+                        renderPart(leftFoot, defaultModel.bipedRightLeg, transform, scale, -0.005F, 0.045F, 0.0F, rightFootSneak);
                     }
                     break;
                 case LEFT_FOOT:
                      if (!shoesFeetMode) {
-                        renderPart(leftFoot, defaultModel.bipedRightLeg, transform, scale, -0.005F, 0.045F, 0.0F);
+                        renderPart(leftFoot, defaultModel.bipedRightLeg, transform, scale, -0.005F, 0.045F, 0.0F, rightFootSneak);
                     }
                     break;
                 default:
@@ -199,7 +201,8 @@ public class DynamXHelper {
         }
     }
 
-    private static void renderPart(ModelRenderer part, ModelRenderer targetPart, float[] transform, float scale, float adX, float adY, float adZ) {
+    private static void renderPart(ModelRenderer part, ModelRenderer targetPart, float[] transform, 
+                                   float scale, float adX, float adY, float adZ, float sneakOffset) {
         if (part == null || !part.showModel || part.isHidden) return;
         
         // Transform: {scaleX, scaleY, scaleZ, offX, offY, offZ}
@@ -215,20 +218,13 @@ public class DynamXHelper {
         float ty = (targetPart != null ? targetPart.rotationPointY : part.rotationPointY);
         float tz = (targetPart != null ? targetPart.rotationPointZ : part.rotationPointZ);
 
-        // Difference between Target and Actual Part pivot
-        float dx = tx - part.rotationPointX;
-        float dy = ty - part.rotationPointY;
-        float dz = tz - part.rotationPointZ;
-
         GlStateManager.pushMatrix();
 
-        // 1. Move to the Pivot Point (The Joint)
-        //    This establishes the center of rotation and scaling.
-        GlStateManager.translate(tx * scale, ty * scale, tz * scale);
+        // 1. Move to the Pivot Point + Sneak Offset
+        //    (ty * scale) converts model units to world units. sneakOffset is in world units (0.2F).
+        GlStateManager.translate(tx * scale, (ty * scale) + sneakOffset, tz * scale);
 
         // 2. Apply Rotation (Standard ModelRenderer angles)
-        //    Use rotation from the target part (Vanilla Biped) if available, to ensure
-        //    the clothing follows the player's actual animation state perfectly.
         float rx = (targetPart != null ? targetPart.rotateAngleX : part.rotateAngleX);
         float ry = (targetPart != null ? targetPart.rotateAngleY : part.rotateAngleY);
         float rz = (targetPart != null ? targetPart.rotateAngleZ : part.rotateAngleZ);
@@ -237,8 +233,7 @@ public class DynamXHelper {
         if (ry != 0.0F) GlStateManager.rotate(ry * (180F / (float)Math.PI), 0.0F, 1.0F, 0.0F);
         if (rx != 0.0F) GlStateManager.rotate(rx * (180F / (float)Math.PI), 1.0F, 0.0F, 0.0F);
 
-        // 3. Apply User Transforms (Offset & Scale)
-        //    These are relative to the joint/bone.
+        // 3. Apply User Transforms
         if (ox != 0.0f || oy != 0.0f || oz != 0.0f) {
              GlStateManager.translate(ox, oy, oz);
         }
@@ -247,15 +242,6 @@ public class DynamXHelper {
         }
 
         // 4. Move Back to the Geometry Origin
-        //    We want to render the part such that its own pivot (rotationPoint) aligns with the Target pivot.
-        //    Coordinates:
-        //      Current Matrix Origin (0,0,0) is at the Joint (Tx, Ty, Tz).
-        //      The Part mesh is defined relative to the Part Pivot (Px, Py, Pz).
-        //      To align Part Pivot to Matrix Origin, we must translate by -PartPivot.
-        //      (If Part Pivot is (0,0,0), this is identity).
-        //      (If Part Pivot is (5,0,0), and mesh is at (5,0,0), then mesh relative to pivot is (0,0,0).
-        //       Translate(-5) puts the cursor at (0,0,0) relative to mesh. Correct).
-
         float px = part.rotationPointX;
         float py = part.rotationPointY;
         float pz = part.rotationPointZ;
@@ -265,23 +251,7 @@ public class DynamXHelper {
         }
 
         // 5. Render Part
-        //    We zero out the part's own transforms because we manually constructed the stack above.
-        //    modelRenderer.render(scale) basically translates to rotationPoint, rotates, then draws display list.
-        //    Since we set rotationPoint/Angle to 0, it just draws the display list at (0,0,0) of current matrix.
-        //    Wait! We need to undo the 'translate(part.rotationPointX...)' that render() normally does?
-        //    render() does: translate(rotationPoint); define box relative to it.
-        //    If we zero rotationPoint, it translates(0).
-        //    But we assumed in Step 4 that we wanted to be at Part.rotationPoint.
-        //    Wait, ModelRenderer.render() logic:
-        //      translate(this.rotationPointX * scale, ...);
-        //      ...
-        //      callDisplayList();
-        //    The display list assumes origin is at the rotation point.
-        //    So if we zero rotationPoint, render() calls display list at Current Position.
-        //    Step 4 left us at 'Part' (Rotated).
-        //    So calling display list here renders the box at Part.
-        //    This is CORRECT.
-
+        // Temporarily zero transforms
         float savedX = part.rotationPointX;
         float savedY = part.rotationPointY;
         float savedZ = part.rotationPointZ;
