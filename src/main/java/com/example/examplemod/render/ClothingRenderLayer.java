@@ -172,31 +172,65 @@ public class ClothingRenderLayer implements LayerRenderer<AbstractClientPlayer> 
 
                     // Apply per-slot transform: float[6] = {scaleX, scaleY, scaleZ, offsetX, offsetY, offsetZ}
                     float[] transform = inventory.getSlotTransform(layerIndex, slotIndex);
-                    float scaleX = transform[0];
-                    float scaleY = transform[1];
-                    float scaleZ = transform[2];
-                    float ox     = transform[3];
-                    float oy     = transform[4];
-                    float oz     = transform[5];
 
-                    GlStateManager.pushMatrix();
-                    if (ox != 0.0f || oy != 0.0f || oz != 0.0f) {
-                        GlStateManager.translate(ox, oy, oz);
-                    }
-                    if (scaleX != 1.0f || scaleY != 1.0f || scaleZ != 1.0f) {
-                        GlStateManager.scale(scaleX, scaleY, scaleZ);
-                    }
-                    GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+                    if (isDynamX) {
+                        float scaleX = transform[0];
+                        float scaleY = transform[1];
+                        float scaleZ = transform[2];
+                        float ox     = transform[3];
+                        float oy     = transform[4];
+                        float oz     = transform[5];
 
-                    boolean handledByDynamX = DynamXHelper.renderDynamXArmorPart(
-                            model, slotType,
-                            chestArmsMode, pantsLegsMode, shoesFeetMode,
-                            scale,
-                            player, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
-                    if (!handledByDynamX) {
-                        model.render(player, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, scale);
+                        net.minecraft.client.model.ModelRenderer pivotPart =
+                                getModelPartForSlot(model, slotType, pantsLegsMode, shoesFeetMode);
+
+                        float tx = ox;
+                        float ty = oy;
+                        float tz = oz;
+                        if (pivotPart != null && (ox != 0.0f || oy != 0.0f || oz != 0.0f)) {
+                            float[] rotatedOffset = rotateVectorByPartAngles(
+                                    ox, oy, oz,
+                                    pivotPart.rotateAngleX,
+                                    pivotPart.rotateAngleY,
+                                    pivotPart.rotateAngleZ);
+                            tx = rotatedOffset[0];
+                            ty = rotatedOffset[1];
+                            tz = rotatedOffset[2];
+                        }
+
+                        GlStateManager.pushMatrix();
+                        if (tx != 0.0f || ty != 0.0f || tz != 0.0f) {
+                            GlStateManager.translate(tx, ty, tz);
+                        }
+                        if (scaleX != 1.0f || scaleY != 1.0f || scaleZ != 1.0f) {
+                            float[] pivot = getPivotForSlot(model, slotType, chestArmsMode, pantsLegsMode, shoesFeetMode);
+                            GlStateManager.translate(pivot[0], pivot[1], pivot[2]);
+                            GlStateManager.scale(scaleX, scaleY, scaleZ);
+                            GlStateManager.translate(-pivot[0], -pivot[1], -pivot[2]);
+                        }
+                        GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+
+                        boolean handledByDynamX = DynamXHelper.renderDynamXArmorPart(
+                                model, slotType,
+                                chestArmsMode, pantsLegsMode, shoesFeetMode,
+                                scale,
+                                player, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
+                        if (!handledByDynamX) {
+                            model.render(player, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, scale);
+                        }
+                        GlStateManager.popMatrix();
+                    } else {
+                        // Standard rendering: apply transform per-part locally in the hierarchy
+                        model.setRotationAngles(limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, scale, player);
+
+                        renderPartOverride(model.bipedHead, transform, scale);
+                        renderPartOverride(model.bipedHeadwear, transform, scale);
+                        renderPartOverride(model.bipedBody, transform, scale);
+                        renderPartOverride(model.bipedLeftArm, transform, scale);
+                        renderPartOverride(model.bipedRightArm, transform, scale);
+                        renderPartOverride(model.bipedLeftLeg, transform, scale);
+                        renderPartOverride(model.bipedRightLeg, transform, scale);
                     }
-                    GlStateManager.popMatrix();
                 }
             } catch (Exception e) {
                 System.err.println("Error rendering clothing layer: " + e.getMessage());
@@ -209,6 +243,154 @@ public class ClothingRenderLayer implements LayerRenderer<AbstractClientPlayer> 
     private String getModId(Item item) {
         ResourceLocation reg = item.getRegistryName();
         return reg != null ? reg.getResourceDomain() : "minecraft";
+    }
+
+    private net.minecraft.client.model.ModelRenderer getModelPartForSlot(ModelBiped model,
+                                                                          ClothingInventorySlot slotType,
+                                                                          boolean pantsLegsMode,
+                                                                          boolean shoesFeetMode) {
+        switch (slotType) {
+            case HEAD:
+                return model.bipedHead;
+            case CHEST:
+                return model.bipedBody;
+            case RIGHT_ARM:
+                return model.bipedLeftArm;
+            case LEFT_ARM:
+                return model.bipedRightArm;
+            case RIGHT_LEG:
+                return pantsLegsMode ? model.bipedBody : model.bipedLeftLeg;
+            case LEFT_LEG:
+                return model.bipedRightLeg;
+            case RIGHT_FOOT:
+                return shoesFeetMode ? model.bipedBody : model.bipedLeftLeg;
+            case LEFT_FOOT:
+                return model.bipedRightLeg;
+            default:
+                return model.bipedBody;
+        }
+    }
+
+    private float[] rotateVectorByPartAngles(float x, float y, float z,
+                                             float angleX, float angleY, float angleZ) {
+        // Match ModelRenderer transformation order: Rz * Ry * Rx * v
+        // This means we apply X rotation first (closest to vector), then Y, then Z.
+        float[] v = new float[]{x, y, z};
+
+        // 1. Rotate around X axis
+        if (angleX != 0.0f) {
+            float cos = (float) Math.cos(angleX);
+            float sin = (float) Math.sin(angleX);
+            float ny = v[1] * cos - v[2] * sin;
+            float nz = v[1] * sin + v[2] * cos;
+            v[1] = ny;
+            v[2] = nz;
+        }
+
+        // 2. Rotate around Y axis
+        if (angleY != 0.0f) {
+            float cos = (float) Math.cos(angleY);
+            float sin = (float) Math.sin(angleY);
+            float nx = v[0] * cos + v[2] * sin;
+            float nz = -v[0] * sin + v[2] * cos;
+            v[0] = nx;
+            v[2] = nz;
+        }
+
+        // 3. Rotate around Z axis
+        if (angleZ != 0.0f) {
+            float cos = (float) Math.cos(angleZ);
+            float sin = (float) Math.sin(angleZ);
+            float nx = v[0] * cos - v[1] * sin;
+            float ny = v[0] * sin + v[1] * cos;
+            v[0] = nx;
+            v[1] = ny;
+        }
+
+        return v;
+    }
+
+    private float[] getPivotForSlot(ModelBiped model,
+                                    ClothingInventorySlot slotType,
+                                    boolean chestArmsMode,
+                                    boolean pantsLegsMode,
+                                    boolean shoesFeetMode) {
+        net.minecraft.client.model.ModelRenderer part =
+                getModelPartForSlot(model, slotType, pantsLegsMode, shoesFeetMode);
+
+        return new float[]{
+                part.rotationPointX / 16.0f,
+                part.rotationPointY / 16.0f,
+                part.rotationPointZ / 16.0f
+        };
+    }
+
+
+    private void renderPartOverride(net.minecraft.client.model.ModelRenderer part, float[] transform, float scale) {
+        if (!part.showModel || part.isHidden) return;
+
+        float scaleX = transform[0];
+        float scaleY = transform[1];
+        float scaleZ = transform[2];
+        float ox     = transform[3];
+        float oy     = transform[4];
+        float oz     = transform[5];
+
+        GlStateManager.pushMatrix();
+
+        // 1. Position at the part's pivot (standard ModelRenderer behavior)
+        if (part.rotationPointX != 0.0F || part.rotationPointY != 0.0F || part.rotationPointZ != 0.0F) {
+            GlStateManager.translate(part.rotationPointX * scale, part.rotationPointY * scale, part.rotationPointZ * scale);
+        }
+
+        // 2. Apply Model Rotation (standard ModelRenderer behavior)
+        if (part.rotateAngleZ != 0.0F) GlStateManager.rotate(part.rotateAngleZ * (180F / (float)Math.PI), 0.0F, 0.0F, 1.0F);
+        if (part.rotateAngleY != 0.0F) GlStateManager.rotate(part.rotateAngleY * (180F / (float)Math.PI), 0.0F, 1.0F, 0.0F);
+        if (part.rotateAngleX != 0.0F) GlStateManager.rotate(part.rotateAngleX * (180F / (float)Math.PI), 1.0F, 0.0F, 0.0F);
+
+        // 3. User Transform - "Relative to the limb pivot and rotation"
+        // Apply Offset
+        if (ox != 0.0f || oy != 0.0f || oz != 0.0f) {
+            GlStateManager.translate(ox, oy, oz);
+        }
+        // Apply Scale
+        if (scaleX != 1.0f || scaleY != 1.0f || scaleZ != 1.0f) {
+            GlStateManager.scale(scaleX, scaleY, scaleZ);
+        }
+
+        // 4. Render the part content
+        // Temporarily zero transforms so render(scale) only draws the boxes/list without re-transforming.
+        float savedX = part.rotationPointX;
+        float savedY = part.rotationPointY;
+        float savedZ = part.rotationPointZ;
+        float savedRotX = part.rotateAngleX;
+        float savedRotY = part.rotateAngleY;
+        float savedRotZ = part.rotateAngleZ;
+
+        part.rotationPointX = 0;
+        part.rotationPointY = 0;
+        part.rotationPointZ = 0;
+        part.rotateAngleX = 0;
+        part.rotateAngleY = 0;
+        part.rotateAngleZ = 0;
+        
+        // IMPORTANT: ModelRenderer.render() normally compiles commands to translate to rotationPoint,
+        // rotate, THEN compile the display list.
+        // We have zeroed rotationPoint and rotateAngle, so render() will essentially translate(0,0,0)
+        // and call the display list.
+        // The display list contains the box geometry compiled relative to the pivot.
+        
+        part.render(scale);
+
+        // Restore
+        part.rotationPointX = savedX;
+        part.rotationPointY = savedY;
+        part.rotationPointZ = savedZ;
+        part.rotateAngleX = savedRotX;
+        part.rotateAngleY = savedRotY;
+        part.rotateAngleZ = savedRotZ;
+
+        GlStateManager.popMatrix();
     }
 
     @Override

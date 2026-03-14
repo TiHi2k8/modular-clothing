@@ -35,6 +35,7 @@ public class ClothingGui extends GuiContainer {
     private static final ResourceLocation ICON_RIGHT_SHOE = new ResourceLocation(ExampleMod.MODID, "textures/gui/icons/clothing_icon_right_shoe.png");
     private static final ResourceLocation ICON_LEFT_SHOE  = new ResourceLocation(ExampleMod.MODID, "textures/gui/icons/clothing_icon_left_shoe.png");
     private static final ResourceLocation ICON_HELMET     = new ResourceLocation("minecraft", "textures/items/empty_armor_slot_helmet.png");
+    private static final ResourceLocation ICON_CHESTPLATE = new ResourceLocation("minecraft", "textures/items/empty_armor_slot_chestplate.png");
     private static final ResourceLocation ICON_LEGGINGS   = new ResourceLocation("minecraft", "textures/items/empty_armor_slot_leggings.png");
     private static final ResourceLocation ICON_BOOTS      = new ResourceLocation("minecraft", "textures/items/empty_armor_slot_boots.png");
 
@@ -239,7 +240,14 @@ public class ClothingGui extends GuiContainer {
                     case 0: icon = ICON_HELMET; break; // HEAD
                     case 1: icon = ICON_RIGHT_ARM; break; // RIGHT_ARM
                     case 2: icon = ICON_LEFT_ARM; break; // LEFT_ARM
-                    case 3: icon = ICON_CHEST; break; // CHEST
+                    case 3:
+                        // CHEST: in merged chest+arms mode, show vanilla chestplate slot texture.
+                        if (inv2 != null && inv2.getChestArmsMode(container2.getCurrentLayer())) {
+                            icon = ICON_CHESTPLATE;
+                        } else {
+                            icon = ICON_CHEST;
+                        }
+                        break;
                     case 4:
                         // RIGHT_LEG / PANTS
                         // If merged mode, use standard Minecraft icon. Else use custom icon.

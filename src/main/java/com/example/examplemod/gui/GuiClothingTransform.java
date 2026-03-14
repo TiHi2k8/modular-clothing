@@ -4,10 +4,16 @@ import com.example.examplemod.capability.ClothingProvider;
 import com.example.examplemod.capability.IClothingInventory;
 import com.example.examplemod.network.ClothingNetworkHandler;
 import com.example.examplemod.network.PacketUpdateClothingTransform;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiTextField;
 import net.minecraft.client.gui.inventory.GuiInventory;
+import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.client.renderer.OpenGlHelper;
+import net.minecraft.client.renderer.RenderHelper;
+import net.minecraft.client.renderer.entity.RenderManager;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
@@ -58,6 +64,11 @@ public class GuiClothingTransform extends GuiScreen {
 
     /** Saved on open so Cancel / Escape can undo any live-preview changes. */
     private float[] originalTransform;
+
+    // Preview controls: fixed front view by default, rotate only while left-dragging in preview area.
+    private float previewLookX = 0.0f;
+    private boolean draggingPreview = false;
+    private int lastDragMouseX;
 
     public GuiClothingTransform(ClothingGui parent, int slotIndex, int layer) {
         this.parent    = parent;
@@ -263,11 +274,10 @@ public class GuiClothingTransform extends GuiScreen {
 
         // Player preview on the left side
         int previewX = cx - 120;
-        int previewY = this.height / 2 + 20;
-        GuiInventory.drawEntityOnScreen(previewX, previewY, 40,
-                (float) previewX - mouseX,
-                (float) (previewY - 50) - mouseY,
-                this.mc.player);
+        int previewY = this.height / 2 + 60; // Moved down because scale is larger
+        
+        // Use custom render method for 360 degree rotation and larger scale
+        drawEntityOnScreen360(previewX, previewY, 70, previewLookX, 0.0f, this.mc.player);
 
         // Panel title
         String title = "Transform  (Slot " + (slotIndex + 1) + ", Layer " + (layer + 1) + ")";
@@ -331,7 +341,98 @@ public class GuiClothingTransform extends GuiScreen {
         fieldOffX.mouseClicked(mouseX, mouseY, mouseButton);
         fieldOffY.mouseClicked(mouseX, mouseY, mouseButton);
         fieldOffZ.mouseClicked(mouseX, mouseY, mouseButton);
+
+        if (mouseButton == 0 && isMouseOverPreview(mouseX, mouseY)) {
+            draggingPreview = true;
+            lastDragMouseX = mouseX;
+        }
+
         super.mouseClicked(mouseX, mouseY, mouseButton);
+    }
+
+    @Override
+    protected void mouseReleased(int mouseX, int mouseY, int state) {
+        if (state == 0) {
+            draggingPreview = false;
+        }
+        super.mouseReleased(mouseX, mouseY, state);
+    }
+
+    @Override
+    protected void mouseClickMove(int mouseX, int mouseY, int clickedMouseButton, long timeSinceLastClick) {
+        if (draggingPreview && clickedMouseButton == 0) {
+            int deltaX = mouseX - lastDragMouseX;
+
+            previewLookX += deltaX * 2.0f;
+
+            lastDragMouseX = mouseX;
+        }
+        super.mouseClickMove(mouseX, mouseY, clickedMouseButton, timeSinceLastClick);
+    }
+
+    private boolean isMouseOverPreview(int mouseX, int mouseY) {
+        int cx = this.width / 2;
+        int previewX = cx - 120;
+        int previewY = this.height / 2 + 60; // Adjusted for new Y position
+        // Adjusted hitbox for larger scale (approx 70 vs 40)
+        int left = previewX - 40;
+        int right = previewX + 40;
+        int top = previewY - 130;  // Head is higher
+        int bottom = previewY + 20;
+        return mouseX >= left && mouseX <= right && mouseY >= top && mouseY <= bottom;
+    }
+
+    /**
+     * Custom version of GuiInventory.drawEntityOnScreen that takes explicit yaw/pitch angles
+     * instead of calculating them from mouse position (which clamps at around 90 degrees).
+     * This allows full 360-degree rotation.
+     */
+    public static void drawEntityOnScreen360(int posX, int posY, int scale, float yaw, float pitch, EntityLivingBase ent) {
+        GlStateManager.enableColorMaterial();
+        GlStateManager.pushMatrix();
+        GlStateManager.translate((float)posX, (float)posY, 50.0F);
+        GlStateManager.scale((float)(-scale), (float)scale, (float)scale);
+        GlStateManager.rotate(180.0F, 0.0F, 0.0F, 1.0F);
+
+        float f = ent.renderYawOffset;
+        float f1 = ent.rotationYaw;
+        float f2 = ent.rotationPitch;
+        float f3 = ent.prevRotationYawHead;
+        float f4 = ent.rotationYawHead;
+
+        GlStateManager.rotate(135.0F, 0.0F, 1.0F, 0.0F);
+        RenderHelper.enableStandardItemLighting();
+        GlStateManager.rotate(-135.0F, 0.0F, 1.0F, 0.0F);
+
+        // Apply pitch rotation (standard behavior typically rotates -atan(pitch))
+        GlStateManager.rotate(-((float)Math.atan((double)(pitch / 40.0F))) * 20.0F, 1.0F, 0.0F, 0.0F);
+
+        // Apply global YAW directly without clamping
+        ent.renderYawOffset = yaw;
+        ent.rotationYaw = yaw;
+        ent.rotationPitch = -((float)Math.atan((double)(pitch / 40.0F))) * 20.0F;
+        ent.rotationYawHead = yaw;
+        ent.prevRotationYawHead = yaw;
+
+        GlStateManager.translate(0.0F, 0.0F, 0.0F);
+        RenderManager rendermanager = Minecraft.getMinecraft().getRenderManager();
+        rendermanager.setPlayerViewY(180.0F);
+        rendermanager.setRenderShadow(false);
+        rendermanager.renderEntity(ent, 0.0D, 0.0D, 0.0D, 0.0F, 1.0F, false);
+        rendermanager.setRenderShadow(true);
+
+        ent.renderYawOffset = f;
+        ent.rotationYaw = f1;
+        ent.rotationPitch = f2;
+        ent.prevRotationYawHead = f3;
+        ent.rotationYawHead = f4;
+
+        GlStateManager.popMatrix();
+        RenderHelper.disableStandardItemLighting();
+        GlStateManager.disableRescaleNormal();
+        GlStateManager.setActiveTexture(OpenGlHelper.lightmapTexUnit);
+        GlStateManager.disableTexture2D();
+        GlStateManager.setActiveTexture(OpenGlHelper.defaultTexUnit);
     }
 
     /**
