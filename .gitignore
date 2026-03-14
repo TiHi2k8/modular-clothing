@@ -24,3 +24,7 @@ run
 # Files from Forge MDK
 forge*changelog.txt
 /#dynamx sources/
+/run_client_1/
+/run_client_2/
+/run_server/
+/run_client_3+/

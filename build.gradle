@@ -19,8 +19,146 @@ sourceCompatibility = targetCompatibility = '1.8'
 
 minecraft {
     version = "1.12.2-14.23.5.2847"
-    runDir = "run"
+    runDir = "run_server"
     mappings = "snapshot_20171003"
+}
+
+afterEvaluate {
+    def adjustClientArgs = { List originalArgs, String targetRunDir, String username ->
+        def updatedArgs = originalArgs ? new ArrayList<>(originalArgs) : []
+        def targetRunDirPath = file(targetRunDir).absolutePath
+        boolean hasGameDir = false
+        boolean hasUsername = false
+
+        for (int i = 0; i < updatedArgs.size(); i++) {
+            def arg = updatedArgs[i]
+            if (arg == '--gameDir' && i + 1 < updatedArgs.size()) {
+                updatedArgs[i + 1] = targetRunDirPath
+                hasGameDir = true
+            } else if (arg instanceof String && arg.startsWith('--gameDir=')) {
+                updatedArgs[i] = "--gameDir=${targetRunDirPath}"
+                hasGameDir = true
+            } else if (arg == '--username' && i + 1 < updatedArgs.size()) {
+                updatedArgs[i + 1] = username
+                hasUsername = true
+            } else if (arg instanceof String && arg.startsWith('--username=')) {
+                updatedArgs[i] = "--username=${username}"
+                hasUsername = true
+            }
+        }
+
+        if (!hasGameDir) {
+            updatedArgs.add('--gameDir')
+            updatedArgs.add(targetRunDirPath)
+        }
+
+        if (username != null && !hasUsername) {
+            updatedArgs.add('--username')
+            updatedArgs.add(username)
+        }
+
+        updatedArgs
+    }
+
+    def createRunCloneTask = { String newTaskName, String sourceTaskName, String targetRunDir, boolean configureClientArgs, String username ->
+        def sourceTask = tasks.getByName(sourceTaskName) as JavaExec
+
+        tasks.create(name: newTaskName, type: JavaExec) {
+            group = sourceTask.group
+            description = "Runs ${sourceTaskName} with working directory '${targetRunDir}'"
+
+            dependsOn sourceTask.taskDependencies.getDependencies(sourceTask)
+
+            main = sourceTask.main
+            classpath = sourceTask.classpath
+            args = configureClientArgs ? adjustClientArgs(sourceTask.args, targetRunDir, username) : (sourceTask.args ? new ArrayList<>(sourceTask.args) : [])
+            jvmArgs = sourceTask.jvmArgs ? new ArrayList<>(sourceTask.jvmArgs) : []
+            systemProperties.putAll(sourceTask.systemProperties)
+            environment.putAll(sourceTask.environment)
+
+            standardInput = sourceTask.standardInput
+            ignoreExitValue = sourceTask.ignoreExitValue
+            workingDir = file(targetRunDir)
+
+            doFirst {
+                workingDir.mkdirs()
+            }
+        }
+    }
+
+    createRunCloneTask('runClient1', 'runClient', 'run_client_1', true, 'Client1')
+    createRunCloneTask('runClient2', 'runClient', 'run_client_2', true, 'Client2')
+    createRunCloneTask('runClient3Plus', 'runClient', 'run_client_3+', true, 'Client3Plus')
+    createRunCloneTask('runServerDedicated', 'runServer', 'run_server', false, null)
+
+    tasks.create(name: 'runMultiplayerTest') {
+        group = 'ForgeGradle tasks'
+        description = 'Starts runServerDedicated, runClient1 and runClient2 immediately in separate terminals'
+
+        doLast {
+            def isWindows = System.properties['os.name'].toLowerCase().contains('windows')
+            def gradlewCmd = isWindows ? 'gradlew.bat' : './gradlew'
+
+            if (isWindows) {
+                exec {
+                    commandLine 'cmd', '/c',
+                            "start \"MC Server\" cmd /k \"${gradlewCmd} runServerDedicated\" & " +
+                            "start \"MC Client 1\" cmd /k \"${gradlewCmd} runClient1\" & " +
+                            "start \"MC Client 2\" cmd /k \"${gradlewCmd} runClient2\""
+                }
+            } else {
+                exec {
+                    commandLine 'sh', '-c',
+                            "${gradlewCmd} runServerDedicated & ${gradlewCmd} runClient1 & ${gradlewCmd} runClient2 &"
+                }
+            }
+        }
+    }
+
+    tasks.create(name: 'RunMultiplayerTest-More') {
+        group = 'ForgeGradle tasks'
+        description = 'Opens a terminal prompt for client count and starts server plus requested clients'
+
+        doLast {
+            def isWindows = System.properties['os.name'].toLowerCase().contains('windows')
+
+            if (isWindows) {
+                def projectPath = projectDir.absolutePath.replace("'", "''")
+                def launcherScript = file("$buildDir/tmp/runMultiplayerMoreLauncher.ps1")
+                launcherScript.parentFile.mkdirs()
+                launcherScript.text = """
+Set-Location -LiteralPath '${projectPath}'
+
+\$clientsInput = Read-Host 'How many clients should start?'
+\$clients = 2
+if (-not [int]::TryParse(\$clientsInput, [ref]\$clients)) { \$clients = 2 }
+if (\$clients -lt 1) { \$clients = 1 }
+
+Start-Process -FilePath 'cmd.exe' -ArgumentList '/k', '.\\gradlew.bat runServerDedicated' -WorkingDirectory (Get-Location).Path
+if (\$clients -ge 1) {
+    Start-Process -FilePath 'cmd.exe' -ArgumentList '/k', '.\\gradlew.bat runClient1' -WorkingDirectory (Get-Location).Path
+}
+if (\$clients -ge 2) {
+    Start-Process -FilePath 'cmd.exe' -ArgumentList '/k', '.\\gradlew.bat runClient2' -WorkingDirectory (Get-Location).Path
+}
+if (\$clients -ge 3) {
+    for (\$i = 3; \$i -le \$clients; \$i++) {
+        Start-Process -FilePath 'cmd.exe' -ArgumentList '/k', '.\\gradlew.bat runClient3Plus' -WorkingDirectory (Get-Location).Path
+    }
+}
+
+Write-Host "Started server and \$clients client process(es)."
+""".stripIndent()
+
+                exec {
+                    commandLine 'cmd', '/c',
+                            "start \"MC Multiplayer Launcher\" powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -NoExit -File \"${launcherScript.absolutePath}\""
+                }
+            } else {
+                throw new GradleException('RunMultiplayerTest-More is currently implemented for Windows only.')
+            }
+        }
+    }
 }
 
 dependencies {
