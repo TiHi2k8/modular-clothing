@@ -73,34 +73,36 @@ public class ClothingRenderLayer implements LayerRenderer<AbstractClientPlayer> 
                 model.bipedRightLeg.showModel = false;
                 model.bipedLeftLeg.showModel = false;
 
-                // Show only the standard biped part matching this slot
+                // Show only the standard biped part matching this slot.
+                // Mirroring: from the camera's view, bipedLeftArm/Leg appears on screen RIGHT
+                // and bipedRightArm/Leg appears on screen LEFT. So RIGHT_* slots use the Left
+                // biped field and LEFT_* slots use the Right biped field.
                 switch (slotType) {
                     case HEAD:
                         model.bipedHead.showModel = true;
                         model.bipedHeadwear.showModel = true;
                         break;
                     case CHEST:
+                        // Body only — arms are in dedicated slots
                         model.bipedBody.showModel = true;
-                        model.bipedRightArm.showModel = true;
-                        model.bipedLeftArm.showModel = true;
                         break;
                     case RIGHT_ARM:
-                        model.bipedRightArm.showModel = true;
+                        model.bipedLeftArm.showModel = true;  // screen right = player's left
                         break;
                     case LEFT_ARM:
-                        model.bipedLeftArm.showModel = true;
+                        model.bipedRightArm.showModel = true; // screen left = player's right
                         break;
                     case RIGHT_LEG:
-                        model.bipedRightLeg.showModel = true;
+                        model.bipedLeftLeg.showModel = true;  // screen right = player's left
                         break;
                     case LEFT_LEG:
-                        model.bipedLeftLeg.showModel = true;
+                        model.bipedRightLeg.showModel = true; // screen left = player's right
                         break;
                     case RIGHT_FOOT:
-                        model.bipedRightLeg.showModel = true;
+                        model.bipedLeftLeg.showModel = true;  // screen right = player's left
                         break;
                     case LEFT_FOOT:
-                        model.bipedLeftLeg.showModel = true;
+                        model.bipedRightLeg.showModel = true; // screen left = player's right
                         break;
                 }
 

@@ -32,6 +32,16 @@ public class DynamXHelper {
     // DO NOT use renderRightArm()/renderLeftArm() — those call
     // setModelAttributes(this) internally which resets to the default pose,
     // losing the player's live walking/swing animation.
+    //
+    // Mirroring: from the camera's perspective (looking at the player):
+    //   arms[0]  = bipedLeftArm  (player's left)  = appears on SCREEN RIGHT
+    //   arms[1]  = bipedRightArm (player's right)  = appears on SCREEN LEFT
+    //   legs[0]  = bipedLeftLeg  (player's left)   = appears on SCREEN RIGHT
+    //   legs[1]  = bipedRightLeg (player's right)  = appears on SCREEN LEFT
+    //   foot[0]  = left foot (mirror=true)          = appears on SCREEN RIGHT
+    //   foot[1]  = right foot                       = appears on SCREEN LEFT
+    // So RIGHT_ARM/RIGHT_LEG/RIGHT_FOOT slots → [0] index (screen right),
+    //    LEFT_ARM/LEFT_LEG/LEFT_FOOT slots   → [1] index (screen left).
     // -------------------------------------------------------------------------
 
     private static final String MODEL_OBJ_ARMOR_CLASS = "fr.dynamx.client.renders.model.ModelObjArmor";
@@ -42,6 +52,7 @@ public class DynamXHelper {
     private static Field fieldBody = null;
     private static Field fieldArms = null;
     private static Field fieldLegs = null;
+    private static Field fieldFoot = null;
 
     private static void resolveFields(Class<?> clazz) {
         if (fieldsResolved) return;
@@ -54,6 +65,11 @@ public class DynamXHelper {
             fieldLegs = clazz.getDeclaredField("legs");
             fieldLegs.setAccessible(true);
             fieldsAvailable = true;
+            // foot is optional — present only when the armor has foot parts
+            try {
+                fieldFoot = clazz.getDeclaredField("foot");
+                fieldFoot.setAccessible(true);
+            } catch (Exception ignored) { /* foot field absent */ }
         } catch (Exception e) {
             fieldsAvailable = false;
         }
@@ -78,39 +94,59 @@ public class DynamXHelper {
         resolveFields(model.getClass());
         if (!fieldsAvailable) return false;
 
-        // Slots whose vanilla activePart already renders the right geometry — no hiding needed
-        if (slot == ClothingInventorySlot.CHEST
-                || slot == ClothingInventorySlot.HEAD
-                || slot == ClothingInventorySlot.RIGHT_FOOT
-                || slot == ClothingInventorySlot.LEFT_FOOT) {
-            return false; // let model.render() handle normally
+        // HEAD activePart already renders only the head part — no intervention needed
+        if (slot == ClothingInventorySlot.HEAD) {
+            return false;
         }
 
         try {
-            ModelRenderer body    = safeGet(fieldBody, model);
-            Object        armsArr = fieldArms.get(model);
-            Object        legsArr = fieldLegs.get(model);
+            ModelRenderer body = safeGet(fieldBody, model);
 
-            ModelRenderer leftArm  = getElement(armsArr, 0);
-            ModelRenderer rightArm = getElement(armsArr, 1);
-            ModelRenderer leftLeg  = getElement(legsArr, 0);
-            ModelRenderer rightLeg = getElement(legsArr, 1);
+            Object armsArr = fieldArms.get(model);
+            // arms[0] = bipedLeftArm  (screen RIGHT) → RIGHT_ARM slot
+            // arms[1] = bipedRightArm (screen LEFT)  → LEFT_ARM slot
+            ModelRenderer rightArm = getElement(armsArr, 0); // screen right
+            ModelRenderer leftArm  = getElement(armsArr, 1); // screen left
+
+            Object legsArr = fieldLegs.get(model);
+            // legs[0] = bipedLeftLeg  (screen RIGHT) → RIGHT_LEG slot
+            // legs[1] = bipedRightLeg (screen LEFT)  → LEFT_LEG slot
+            ModelRenderer rightLeg = getElement(legsArr, 0); // screen right
+            ModelRenderer leftLeg  = getElement(legsArr, 1); // screen left
+
+            // foot is optional
+            Object footArr = null;
+            if (fieldFoot != null) {
+                try { footArr = fieldFoot.get(model); } catch (Exception ignored) {}
+            }
+            // foot[0] = left foot (mirror=true, screen RIGHT) → RIGHT_FOOT slot
+            // foot[1] = right foot (screen LEFT)              → LEFT_FOOT slot
+            ModelRenderer rightFoot = getElement(footArr, 0); // screen right
+            ModelRenderer leftFoot  = getElement(footArr, 1); // screen left
 
             // Save original showModel states
-            boolean savedBody     = body     != null && body.showModel;
-            boolean savedLeftArm  = leftArm  != null && leftArm.showModel;
-            boolean savedRightArm = rightArm != null && rightArm.showModel;
-            boolean savedLeftLeg  = leftLeg  != null && leftLeg.showModel;
-            boolean savedRightLeg = rightLeg != null && rightLeg.showModel;
+            boolean savedBody      = body      != null && body.showModel;
+            boolean savedRightArm  = rightArm  != null && rightArm.showModel;
+            boolean savedLeftArm   = leftArm   != null && leftArm.showModel;
+            boolean savedRightLeg  = rightLeg  != null && rightLeg.showModel;
+            boolean savedLeftLeg   = leftLeg   != null && leftLeg.showModel;
+            boolean savedRightFoot = rightFoot != null && rightFoot.showModel;
+            boolean savedLeftFoot  = leftFoot  != null && leftFoot.showModel;
 
             // Hide everything by default, then show only what belongs to this slot
-            if (body     != null) body.showModel     = false;
-            if (leftArm  != null) leftArm.showModel  = false;
-            if (rightArm != null) rightArm.showModel = false;
-            if (leftLeg  != null) leftLeg.showModel  = false;
-            if (rightLeg != null) rightLeg.showModel = false;
+            if (body      != null) body.showModel      = false;
+            if (rightArm  != null) rightArm.showModel  = false;
+            if (leftArm   != null) leftArm.showModel   = false;
+            if (rightLeg  != null) rightLeg.showModel  = false;
+            if (leftLeg   != null) leftLeg.showModel   = false;
+            if (rightFoot != null) rightFoot.showModel = false;
+            if (leftFoot  != null) leftFoot.showModel  = false;
 
             switch (slot) {
+                case CHEST:
+                    // Body only — arms are deliberately hidden
+                    if (body != null) body.showModel = true;
+                    break;
                 case RIGHT_ARM:
                     if (rightArm != null) rightArm.showModel = true;
                     break;
@@ -123,6 +159,12 @@ public class DynamXHelper {
                 case LEFT_LEG:
                     if (leftLeg != null) leftLeg.showModel = true;
                     break;
+                case RIGHT_FOOT:
+                    if (rightFoot != null) rightFoot.showModel = true;
+                    break;
+                case LEFT_FOOT:
+                    if (leftFoot != null) leftFoot.showModel = true;
+                    break;
                 default:
                     break;
             }
@@ -130,11 +172,13 @@ public class DynamXHelper {
             model.render(player, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, scale);
 
             // Restore
-            if (body     != null) body.showModel     = savedBody;
-            if (leftArm  != null) leftArm.showModel  = savedLeftArm;
-            if (rightArm != null) rightArm.showModel = savedRightArm;
-            if (leftLeg  != null) leftLeg.showModel  = savedLeftLeg;
-            if (rightLeg != null) rightLeg.showModel = savedRightLeg;
+            if (body      != null) body.showModel      = savedBody;
+            if (rightArm  != null) rightArm.showModel  = savedRightArm;
+            if (leftArm   != null) leftArm.showModel   = savedLeftArm;
+            if (rightLeg  != null) rightLeg.showModel  = savedRightLeg;
+            if (leftLeg   != null) leftLeg.showModel   = savedLeftLeg;
+            if (rightFoot != null) rightFoot.showModel = savedRightFoot;
+            if (leftFoot  != null) leftFoot.showModel  = savedLeftFoot;
 
             return true;
         } catch (Exception e) {
