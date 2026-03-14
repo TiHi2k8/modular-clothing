@@ -88,7 +88,9 @@ afterEvaluate {
 
     createRunCloneTask('runClient1', 'runClient', 'run_client_1', true, 'Client1')
     createRunCloneTask('runClient2', 'runClient', 'run_client_2', true, 'Client2')
-    createRunCloneTask('runClient3Plus', 'runClient', 'run_client_3+', true, 'Client3Plus')
+    def dynamicClientName = project.hasProperty('dynamicClientName') ? project.property('dynamicClientName').toString() : 'Client3'
+    def dynamicClientDir = project.hasProperty('dynamicClientDir') ? project.property('dynamicClientDir').toString() : 'run_client_3+'
+    createRunCloneTask('runClientDynamic', 'runClient', dynamicClientDir, true, dynamicClientName)
     createRunCloneTask('runServerDedicated', 'runServer', 'run_server', false, null)
 
     tasks.create(name: 'runMultiplayerTest') {
@@ -143,7 +145,7 @@ if (\$clients -ge 2) {
 }
 if (\$clients -ge 3) {
     for (\$i = 3; \$i -le \$clients; \$i++) {
-        Start-Process -FilePath 'cmd.exe' -ArgumentList '/k', '.\\gradlew.bat runClient3Plus' -WorkingDirectory (Get-Location).Path
+        Start-Process -FilePath 'cmd.exe' -ArgumentList '/k', ".\\gradlew.bat runClientDynamic -PdynamicClientName=Client\$i -PdynamicClientDir=run_client_3+" -WorkingDirectory (Get-Location).Path
     }
 }
 

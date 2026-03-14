@@ -1,15 +1,15 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="runClient3Plus" type="GradleRunConfiguration" factoryName="Gradle">
+  <configuration default="false" name="runClientDynamic" type="GradleRunConfiguration" factoryName="Gradle">
     <ExternalSystemSettings>
       <option name="externalProjectPath" value="$PROJECT_DIR$" />
       <option name="externalSystemIdString" value="GRADLE" />
-      <option name="scriptParameters" value="" />
+      <option name="scriptParameters" value="-PdynamicClientName=Client3 -PdynamicClientDir=run_client_3+" />
       <option name="taskDescriptions">
         <list />
       </option>
       <option name="taskNames">
         <list>
-          <option value="runClient3Plus" />
+          <option value="runClientDynamic" />
         </list>
       </option>
       <option name="vmOptions" value="" />
