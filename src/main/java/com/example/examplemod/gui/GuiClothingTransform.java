@@ -46,8 +46,8 @@ public class GuiClothingTransform extends GuiScreen {
 
     private String errorMessage = "";
 
-    // Per-axis mode toggle (persists across initGui() reinit when toggling)
-    private boolean perAxisMode = false;
+    // Per-axis mode toggle — static so it persists across GUI opens (better UX)
+    private static boolean perAxisMode = false;
 
     // Whether initGui has run at least once (for preserving field values on reinit)
     private boolean initialized = false;
