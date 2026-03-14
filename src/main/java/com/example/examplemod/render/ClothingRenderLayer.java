@@ -3,18 +3,28 @@ package com.example.examplemod.render;
 import com.example.examplemod.capability.ClothingInventorySlot;
 import com.example.examplemod.capability.ClothingProvider;
 import com.example.examplemod.capability.IClothingInventory;
+import com.mojang.authlib.GameProfile;
 import net.minecraft.client.entity.AbstractClientPlayer;
 import net.minecraft.client.model.ModelBiped;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.entity.RenderPlayer;
 import net.minecraft.client.renderer.entity.layers.LayerRenderer;
+import net.minecraft.client.renderer.tileentity.TileEntitySkullRenderer;
 import net.minecraft.inventory.EntityEquipmentSlot;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemArmor;
+import net.minecraft.item.ItemSkull;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTUtil;
+import net.minecraft.tileentity.TileEntitySkull;
+import net.minecraft.util.EnumFacing;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.StringUtils;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
+
+import java.util.UUID;
 
 @SideOnly(Side.CLIENT)
 public class ClothingRenderLayer implements LayerRenderer<AbstractClientPlayer> {
@@ -39,6 +49,15 @@ public class ClothingRenderLayer implements LayerRenderer<AbstractClientPlayer> 
 
             Item item = stack.getItem();
             ClothingInventorySlot slotType = ClothingInventorySlot.fromIndex(i % 8);
+
+            // Special handling for Player Heads / Skulls
+            if (item instanceof ItemSkull) {
+                if (slotType == ClothingInventorySlot.HEAD) {
+                    renderSkull(stack, player, inventory.getSlotTransform(i / 8, i % 8), limbSwing, limbSwingAmount, partialTicks, ageInTicks, netHeadYaw, headPitch, scale);
+                }
+                continue;
+            }
+
             EntityEquipmentSlot vanillaSlot = slotType.getVanillaSlot();
 
             // Select default model
@@ -180,7 +199,7 @@ public class ClothingRenderLayer implements LayerRenderer<AbstractClientPlayer> 
                             slotType == ClothingInventorySlot.RIGHT_FOOT ||
                             slotType == ClothingInventorySlot.LEFT_FOOT)) {
                         float[] modified = transform.clone();
-                        modified[5] += 1.0f; // Move backwards by 1.0f
+                        modified[5] += 0.02f; 
                         transform = modified;
                     }
 
@@ -228,7 +247,25 @@ public class ClothingRenderLayer implements LayerRenderer<AbstractClientPlayer> 
                             if (scaleX != 1.0f || scaleY != 1.0f || scaleZ != 1.0f) {
                                 float[] pivot = getPivotForSlot(pivotReference, slotType, chestArmsMode, pantsLegsMode, shoesFeetMode);
                                 GlStateManager.translate(pivot[0], pivot[1], pivot[2]);
+
+                                // Fix for HEAD: Apply rotation sandwich so scaling is local to the head frame
+                                boolean applyRotation = (slotType == ClothingInventorySlot.HEAD) && (pivotPart != null);
+                                float deg = 180F / (float)Math.PI;
+
+                                if (applyRotation) {
+                                    if (pivotPart.rotateAngleZ != 0.0F) GlStateManager.rotate(pivotPart.rotateAngleZ * deg, 0.0F, 0.0F, 1.0F);
+                                    if (pivotPart.rotateAngleY != 0.0F) GlStateManager.rotate(pivotPart.rotateAngleY * deg, 0.0F, 1.0F, 0.0F);
+                                    if (pivotPart.rotateAngleX != 0.0F) GlStateManager.rotate(pivotPart.rotateAngleX * deg, 1.0F, 0.0F, 0.0F);
+                                }
+
                                 GlStateManager.scale(scaleX, scaleY, scaleZ);
+
+                                if (applyRotation) {
+                                    if (pivotPart.rotateAngleX != 0.0F) GlStateManager.rotate(-pivotPart.rotateAngleX * deg, 1.0F, 0.0F, 0.0F);
+                                    if (pivotPart.rotateAngleY != 0.0F) GlStateManager.rotate(-pivotPart.rotateAngleY * deg, 0.0F, 1.0F, 0.0F);
+                                    if (pivotPart.rotateAngleZ != 0.0F) GlStateManager.rotate(-pivotPart.rotateAngleZ * deg, 0.0F, 0.0F, 1.0F);
+                                }
+
                                 GlStateManager.translate(-pivot[0], -pivot[1], -pivot[2]);
                             }
                             GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
@@ -260,6 +297,50 @@ public class ClothingRenderLayer implements LayerRenderer<AbstractClientPlayer> 
     private String getModId(Item item) {
         ResourceLocation reg = item.getRegistryName();
         return reg != null ? reg.getResourceDomain() : "minecraft";
+    }
+
+    private void renderSkull(ItemStack stack, AbstractClientPlayer player, float[] transform, float limbSwing, float limbSwingAmount, float partialTicks, float ageInTicks, float netHeadYaw, float headPitch, float scale) {
+        GameProfile gameprofile = null;
+
+        if (stack.hasTagCompound()) {
+            NBTTagCompound nbttagcompound = stack.getTagCompound();
+            if (nbttagcompound.hasKey("SkullOwner", 10)) {
+                gameprofile = NBTUtil.readGameProfileFromNBT(nbttagcompound.getCompoundTag("SkullOwner"));
+            } else if (nbttagcompound.hasKey("SkullOwner", 8) && !StringUtils.isNullOrEmpty(nbttagcompound.getString("SkullOwner"))) {
+                gameprofile = TileEntitySkull.updateGameprofile(new GameProfile((UUID)null, nbttagcompound.getString("SkullOwner")));
+                nbttagcompound.setTag("SkullOwner", NBTUtil.writeGameProfile(new NBTTagCompound(), gameprofile));
+            }
+        }
+
+        GlStateManager.pushMatrix();
+
+        if (player.isSneaking()) {
+            GlStateManager.translate(0.0F, 0.2F, 0.0F);
+        }
+
+        this.renderer.getMainModel().bipedHead.postRender(0.0625F);
+
+        GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+
+        float scaleX = transform[0];
+        float scaleY = transform[1];
+        float scaleZ = transform[2];
+        float ox = transform[3];
+        float oy = transform[4];
+        float oz = transform[5];
+
+        if (ox != 0.0f || oy != 0.0f || oz != 0.0f) {
+            GlStateManager.translate(ox, oy, oz);
+        }
+        if (scaleX != 1.0f || scaleY != 1.0f || scaleZ != 1.0f) {
+            GlStateManager.scale(scaleX, scaleY, scaleZ);
+        }
+
+        GlStateManager.scale(1.1875F, -1.1875F, -1.1875F);
+
+        TileEntitySkullRenderer.instance.renderSkull(-0.5F, 0.0F, -0.5F, EnumFacing.UP, 180.0F, stack.getMetadata(), gameprofile, -1, limbSwing);
+
+        GlStateManager.popMatrix();
     }
 
     private net.minecraft.client.model.ModelRenderer getModelPartForSlot(ModelBiped model,
