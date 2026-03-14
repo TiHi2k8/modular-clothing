@@ -141,7 +141,16 @@ public class ClothingRenderLayer implements LayerRenderer<AbstractClientPlayer> 
                         GlStateManager.scale(customScale, customScale, customScale);
                     }
                     GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-                    model.render(player, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, scale);
+                    // For DynamX ModelObjArmor: hide the ArmorRenderer parts that don't belong
+                    // to this slot (they check showModel in their own render() override), then
+                    // call model.render() normally so the scene-graph / Matrix4f path runs with
+                    // the live animation already set by setModelAttributes(mainModel).
+                    boolean handledByDynamX = DynamXHelper.renderDynamXArmorPart(
+                            model, slotType, scale,
+                            player, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
+                    if (!handledByDynamX) {
+                        model.render(player, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, scale);
+                    }
                     GlStateManager.popMatrix();
                 }
             } catch (Exception e) {

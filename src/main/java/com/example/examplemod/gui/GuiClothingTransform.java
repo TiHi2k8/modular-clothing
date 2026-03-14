@@ -16,7 +16,8 @@ import java.io.IOException;
 /**
  * Sub-screen opened by right-clicking a clothing slot in ClothingGui.
  * Lets the player set per-slot Scale and XYZ position offsets.
- * "Apply" sends PacketUpdateClothingTransform; both buttons return to parent.
+ * The player preview updates live as values are typed.
+ * "Apply" sends PacketUpdateClothingTransform; "Cancel" / Escape restores the original values.
  */
 @SideOnly(Side.CLIENT)
 public class GuiClothingTransform extends GuiScreen {
@@ -35,6 +36,9 @@ public class GuiClothingTransform extends GuiScreen {
 
     private String errorMessage = "";
 
+    /** Saved on open so Cancel / Escape can undo any live-preview changes. */
+    private float[] originalTransform;
+
     public GuiClothingTransform(ClothingGui parent, int slotIndex, int layer) {
         this.parent    = parent;
         this.slotIndex = slotIndex;
@@ -44,6 +48,8 @@ public class GuiClothingTransform extends GuiScreen {
     @Override
     public void initGui() {
         float[] transform = readCurrentTransform();
+        originalTransform = transform.clone();
+
         int cx = this.width / 2;
         int startY = this.height / 2 - 70;
 
@@ -75,35 +81,66 @@ public class GuiClothingTransform extends GuiScreen {
         return new float[]{1.0f, 0.0f, 0.0f, 0.0f};
     }
 
+    /**
+     * Parse current field values and push them into the local capability so the
+     * player preview reflects the current input without pressing Apply.
+     * Silently ignores unparseable text (the preview just stays at the last valid state).
+     */
+    private void tryApplyLivePreview() {
+        try {
+            float scale = Float.parseFloat(fieldScale.getText().trim());
+            float ox    = Float.parseFloat(fieldOffsetX.getText().trim());
+            float oy    = Float.parseFloat(fieldOffsetY.getText().trim());
+            float oz    = Float.parseFloat(fieldOffsetZ.getText().trim());
+            IClothingInventory localInv = this.mc.player.getCapability(ClothingProvider.CLOTHING_CAPABILITY, null);
+            if (localInv != null) {
+                localInv.setSlotTransform(layer, slotIndex, scale, ox, oy, oz);
+            }
+        } catch (NumberFormatException ignored) {
+            // Leave the preview at its last valid state
+        }
+    }
+
+    /** Write the saved original transform back to the local capability (Cancel / Escape). */
+    private void restoreOriginalTransform() {
+        if (originalTransform == null) return;
+        IClothingInventory localInv = this.mc.player.getCapability(ClothingProvider.CLOTHING_CAPABILITY, null);
+        if (localInv != null) {
+            localInv.setSlotTransform(layer, slotIndex,
+                    originalTransform[0], originalTransform[1],
+                    originalTransform[2], originalTransform[3]);
+        }
+    }
+
     @Override
     protected void actionPerformed(GuiButton button) throws IOException {
         if (button.id == BTN_APPLY) {
             try {
-                float scale   = Float.parseFloat(fieldScale.getText().trim());
-                float ox      = Float.parseFloat(fieldOffsetX.getText().trim());
-                float oy      = Float.parseFloat(fieldOffsetY.getText().trim());
-                float oz      = Float.parseFloat(fieldOffsetZ.getText().trim());
-                errorMessage  = "";
-                // Optimistic local update so render changes immediately without waiting for server sync
-                IClothingInventory localInv = this.mc.player.getCapability(ClothingProvider.CLOTHING_CAPABILITY, null);
-                if (localInv != null) {
-                    localInv.setSlotTransform(layer, slotIndex, scale, ox, oy, oz);
-                }
+                float scale = Float.parseFloat(fieldScale.getText().trim());
+                float ox    = Float.parseFloat(fieldOffsetX.getText().trim());
+                float oy    = Float.parseFloat(fieldOffsetY.getText().trim());
+                float oz    = Float.parseFloat(fieldOffsetZ.getText().trim());
+                errorMessage = "";
+                // Local capability already updated by live preview; just sync to server
                 ClothingNetworkHandler.INSTANCE.sendToServer(
                         new PacketUpdateClothingTransform(layer, slotIndex, scale, ox, oy, oz));
                 this.mc.displayGuiScreen(parent);
                 return;
             } catch (NumberFormatException e) {
                 errorMessage = "Invalid number — use decimal format (e.g. 1.0)";
-                return; // stay on this screen
+                return;
             }
         }
-        // Cancel or any other button — go back
+        // Cancel — undo live-preview changes and go back
+        restoreOriginalTransform();
         this.mc.displayGuiScreen(parent);
     }
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
+        // Push live-preview transform into local capability every frame
+        tryApplyLivePreview();
+
         this.drawDefaultBackground();
 
         int cx = this.width / 2;
@@ -142,6 +179,11 @@ public class GuiClothingTransform extends GuiScreen {
 
     @Override
     protected void keyTyped(char typedChar, int keyCode) throws IOException {
+        if (keyCode == 1) { // Escape — restore and go back
+            restoreOriginalTransform();
+            this.mc.displayGuiScreen(parent);
+            return;
+        }
         fieldScale.textboxKeyTyped(typedChar, keyCode);
         fieldOffsetX.textboxKeyTyped(typedChar, keyCode);
         fieldOffsetY.textboxKeyTyped(typedChar, keyCode);
