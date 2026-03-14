@@ -32,6 +32,7 @@ public class PacketPresetList implements IMessage {
         buf.writeInt(presets.size());
         for (TransformPresetManager.Preset p : presets) {
             ByteBufUtils.writeUTF8String(buf, p.name);
+            buf.writeBoolean(p.perAxisMode);
             buf.writeFloat(p.scaleX);  buf.writeFloat(p.scaleY);  buf.writeFloat(p.scaleZ);
             buf.writeFloat(p.offsetX); buf.writeFloat(p.offsetY); buf.writeFloat(p.offsetZ);
         }
@@ -41,10 +42,11 @@ public class PacketPresetList implements IMessage {
     public void fromBytes(ByteBuf buf) {
         int size = buf.readInt();
         for (int i = 0; i < size; i++) {
-            String name = ByteBufUtils.readUTF8String(buf);
+            String  name      = ByteBufUtils.readUTF8String(buf);
+            boolean perAxis   = buf.readBoolean();
             float sx = buf.readFloat(), sy = buf.readFloat(), sz = buf.readFloat();
             float ox = buf.readFloat(), oy = buf.readFloat(), oz = buf.readFloat();
-            presets.add(new TransformPresetManager.Preset(name, sx, sy, sz, ox, oy, oz));
+            presets.add(new TransformPresetManager.Preset(name, perAxis, sx, sy, sz, ox, oy, oz));
         }
     }
 

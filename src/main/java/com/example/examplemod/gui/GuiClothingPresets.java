@@ -57,8 +57,9 @@ public class GuiClothingPresets extends GuiScreen {
 
     private final GuiClothingTransform parent;
 
-    /** Current transform values passed in from the transform screen. */
-    private final float curSx, curSy, curSz, curOx, curOy, curOz;
+    /** Current transform values + mode passed in from the transform screen. */
+    private final boolean curPerAxisMode;
+    private final float   curSx, curSy, curSz, curOx, curOy, curOz;
 
     private List<TransformPresetManager.Preset> allPresets      = new ArrayList<>();
     private List<TransformPresetManager.Preset> filteredPresets = new ArrayList<>();
@@ -73,10 +74,11 @@ public class GuiClothingPresets extends GuiScreen {
     // Geometry (computed in initGui / buildLayout)
     private int panelLeft, panelTop, panelW;
 
-    public GuiClothingPresets(GuiClothingTransform parent,
+    public GuiClothingPresets(GuiClothingTransform parent, boolean perAxisMode,
                                float sx, float sy, float sz,
                                float ox, float oy, float oz) {
-        this.parent = parent;
+        this.parent        = parent;
+        this.curPerAxisMode = perAxisMode;
         this.curSx  = sx; this.curSy = sy; this.curSz = sz;
         this.curOx  = ox; this.curOy = oy; this.curOz = oz;
     }
@@ -219,7 +221,7 @@ public class GuiClothingPresets extends GuiScreen {
             int idx = button.id - BTN_LOAD_BASE;
             if (idx < filteredPresets.size()) {
                 TransformPresetManager.Preset p = filteredPresets.get(idx);
-                parent.applyPreset(p.scaleX, p.scaleY, p.scaleZ, p.offsetX, p.offsetY, p.offsetZ);
+                parent.applyPreset(p.perAxisMode, p.scaleX, p.scaleY, p.scaleZ, p.offsetX, p.offsetY, p.offsetZ);
                 this.mc.displayGuiScreen(parent);
             }
             return;
@@ -238,7 +240,7 @@ public class GuiClothingPresets extends GuiScreen {
 
     private void sendSave(String name) {
         ClothingNetworkHandler.INSTANCE.sendToServer(
-                new PacketSavePreset(name, curSx, curSy, curSz, curOx, curOy, curOz));
+                new PacketSavePreset(name, curPerAxisMode, curSx, curSy, curSz, curOx, curOy, curOz));
         saveMode = false;
         loading  = true;
         buildLayout();

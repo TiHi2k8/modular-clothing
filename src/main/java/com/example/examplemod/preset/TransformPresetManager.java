@@ -16,14 +16,19 @@ import java.util.List;
 public class TransformPresetManager {
 
     public static class Preset {
-        public final String name;
-        public final float scaleX, scaleY, scaleZ;
-        public final float offsetX, offsetY, offsetZ;
+        public final String  name;
+        public final float   scaleX, scaleY, scaleZ;
+        public final float   offsetX, offsetY, offsetZ;
+        /** Whether the preset was saved with per-axis scale mode (true) or uniform (false). */
+        public final boolean perAxisMode;
 
-        public Preset(String name, float sx, float sy, float sz, float ox, float oy, float oz) {
-            this.name    = name;
-            this.scaleX  = sx; this.scaleY = sy; this.scaleZ = sz;
-            this.offsetX = ox; this.offsetY = oy; this.offsetZ = oz;
+        public Preset(String name, boolean perAxisMode,
+                      float sx, float sy, float sz,
+                      float ox, float oy, float oz) {
+            this.name        = name;
+            this.perAxisMode = perAxisMode;
+            this.scaleX      = sx; this.scaleY = sy; this.scaleZ = sz;
+            this.offsetX     = ox; this.offsetY = oy; this.offsetZ = oz;
         }
     }
 
@@ -44,8 +49,10 @@ public class TransformPresetManager {
             for (JsonElement el : arr) {
                 try {
                     JsonObject obj = el.getAsJsonObject();
+                    boolean perAxis = obj.has("perAxisMode") && obj.get("perAxisMode").getAsBoolean();
                     list.add(new Preset(
                             obj.get("name").getAsString(),
+                            perAxis,
                             obj.get("scaleX").getAsFloat(),
                             obj.get("scaleY").getAsFloat(),
                             obj.get("scaleZ").getAsFloat(),
@@ -66,13 +73,14 @@ public class TransformPresetManager {
         JsonArray arr = new JsonArray();
         for (Preset p : presets) {
             JsonObject obj = new JsonObject();
-            obj.addProperty("name",    p.name);
-            obj.addProperty("scaleX",  p.scaleX);
-            obj.addProperty("scaleY",  p.scaleY);
-            obj.addProperty("scaleZ",  p.scaleZ);
-            obj.addProperty("offsetX", p.offsetX);
-            obj.addProperty("offsetY", p.offsetY);
-            obj.addProperty("offsetZ", p.offsetZ);
+            obj.addProperty("name",        p.name);
+            obj.addProperty("perAxisMode", p.perAxisMode);
+            obj.addProperty("scaleX",      p.scaleX);
+            obj.addProperty("scaleY",      p.scaleY);
+            obj.addProperty("scaleZ",      p.scaleZ);
+            obj.addProperty("offsetX",     p.offsetX);
+            obj.addProperty("offsetY",     p.offsetY);
+            obj.addProperty("offsetZ",     p.offsetZ);
             arr.add(obj);
         }
         try (Writer w = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)) {
@@ -84,12 +92,12 @@ public class TransformPresetManager {
      * Add or overwrite a preset by name (case-insensitive match for overwrite,
      * but keeps original casing of the new name).
      */
-    public static void addOrUpdate(MinecraftServer server, String name,
+    public static void addOrUpdate(MinecraftServer server, String name, boolean perAxisMode,
                                    float sx, float sy, float sz,
                                    float ox, float oy, float oz) {
         List<Preset> list = load(server);
         list.removeIf(p -> p.name.equalsIgnoreCase(name));
-        list.add(new Preset(name, sx, sy, sz, ox, oy, oz));
+        list.add(new Preset(name, perAxisMode, sx, sy, sz, ox, oy, oz));
         save(server, list);
     }
 

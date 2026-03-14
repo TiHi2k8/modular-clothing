@@ -17,14 +17,17 @@ import java.util.List;
  */
 public class PacketSavePreset implements IMessage {
 
-    private String name;
-    private float sx, sy, sz, ox, oy, oz;
+    private String  name;
+    private boolean perAxisMode;
+    private float   sx, sy, sz, ox, oy, oz;
 
     public PacketSavePreset() {}
 
-    public PacketSavePreset(String name, float sx, float sy, float sz,
+    public PacketSavePreset(String name, boolean perAxisMode,
+                             float sx, float sy, float sz,
                              float ox, float oy, float oz) {
-        this.name = name;
+        this.name        = name;
+        this.perAxisMode = perAxisMode;
         this.sx = sx; this.sy = sy; this.sz = sz;
         this.ox = ox; this.oy = oy; this.oz = oz;
     }
@@ -32,13 +35,15 @@ public class PacketSavePreset implements IMessage {
     @Override
     public void toBytes(ByteBuf buf) {
         ByteBufUtils.writeUTF8String(buf, name);
+        buf.writeBoolean(perAxisMode);
         buf.writeFloat(sx); buf.writeFloat(sy); buf.writeFloat(sz);
         buf.writeFloat(ox); buf.writeFloat(oy); buf.writeFloat(oz);
     }
 
     @Override
     public void fromBytes(ByteBuf buf) {
-        name = ByteBufUtils.readUTF8String(buf);
+        name        = ByteBufUtils.readUTF8String(buf);
+        perAxisMode = buf.readBoolean();
         sx = buf.readFloat(); sy = buf.readFloat(); sz = buf.readFloat();
         ox = buf.readFloat(); oy = buf.readFloat(); oz = buf.readFloat();
     }
@@ -50,7 +55,7 @@ public class PacketSavePreset implements IMessage {
             FMLCommonHandler.instance().getMinecraftServerInstance().addScheduledTask(() -> {
                 // Sanitize name length
                 String name = msg.name.length() > 40 ? msg.name.substring(0, 40) : msg.name;
-                TransformPresetManager.addOrUpdate(player.getServer(), name,
+                TransformPresetManager.addOrUpdate(player.getServer(), name, msg.perAxisMode,
                         msg.sx, msg.sy, msg.sz, msg.ox, msg.oy, msg.oz);
                 // Send updated list back to the requesting player
                 List<TransformPresetManager.Preset> presets =

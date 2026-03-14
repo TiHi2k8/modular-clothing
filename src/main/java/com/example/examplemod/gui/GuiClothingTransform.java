@@ -197,7 +197,7 @@ public class GuiClothingTransform extends GuiScreen {
                 float ox = Float.parseFloat(cOffX.trim());
                 float oy = Float.parseFloat(cOffY.trim());
                 float oz = Float.parseFloat(cOffZ.trim());
-                this.mc.displayGuiScreen(new GuiClothingPresets(this, sx, sy, sz, ox, oy, oz));
+                this.mc.displayGuiScreen(new GuiClothingPresets(this, perAxisMode, sx, sy, sz, ox, oy, oz));
             } catch (NumberFormatException e) {
                 errorMessage = "Fix values before opening presets";
             }
@@ -338,9 +338,8 @@ public class GuiClothingTransform extends GuiScreen {
      * Called by GuiClothingPresets when the player clicks "Load" on a preset.
      * Fills all fields and switches to per-axis mode if the scale values differ.
      */
-    public void applyPreset(float sx, float sy, float sz, float ox, float oy, float oz) {
-        // Use uniform mode when all three scale components are equal
-        perAxisMode = !(sx == sy && sy == sz);
+    public void applyPreset(boolean perAxis, float sx, float sy, float sz, float ox, float oy, float oz) {
+        perAxisMode = perAxis;
         cScaleX = String.format("%.4f", sx);
         cScaleY = String.format("%.4f", sy);
         cScaleZ = String.format("%.4f", sz);
