@@ -3,6 +3,7 @@ package com.example.examplemod;
 import com.example.examplemod.capability.ClothingInventory;
 import com.example.examplemod.capability.ClothingStorage;
 import com.example.examplemod.capability.IClothingInventory;
+import com.example.examplemod.command.CommandOpenClothing;
 import com.example.examplemod.client.ClientEventHandler;
 import com.example.examplemod.client.KeybindHandler;
 import com.example.examplemod.gui.ClothingGuiHandler;
@@ -12,6 +13,7 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.SidedProxy;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLServerStartingEvent;
 import net.minecraftforge.fml.common.network.NetworkRegistry;
 
 @Mod(modid = ExampleMod.MODID, name = ExampleMod.NAME, version = ExampleMod.VERSION)
@@ -37,5 +39,10 @@ public class ExampleMod {
     public void init(FMLInitializationEvent event) {
         NetworkRegistry.INSTANCE.registerGuiHandler(this, new ClothingGuiHandler());
         proxy.init(event);
+    }
+
+    @Mod.EventHandler
+    public void serverStarting(FMLServerStartingEvent event) {
+        event.registerServerCommand(new CommandOpenClothing());
     }
 }

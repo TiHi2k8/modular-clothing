@@ -64,6 +64,9 @@ This file is a table of contents for AI agents. It lists **all** key classes and
 - **`client/ClientEventHandler.java`**: Injects `ClothingRenderLayer` into all player renderers on `RenderPlayerEvent.Post`.
 - **`client/KeybindHandler.java`**: Registers the 'K' key to open the clothing GUI.
 
+## ⌨️ Commands (`com.example.examplemod.command`)
+- **`CommandOpenClothing.java`**: Server command `/clothing` that opens the clothing GUI for the executing player as a fallback to the keybind.
+
 ---
 
 ## 🧬 Mixins (`com.example.examplemod.mixin`)

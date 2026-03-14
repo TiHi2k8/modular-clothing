@@ -12,7 +12,7 @@ public class KeybindHandler {
     public static KeyBinding openGuiKey;
 
     public static void init() {
-        openGuiKey = new KeyBinding("key.clothing_gui", Keyboard.KEY_K, "key.categories.modular_clothing");
+        openGuiKey = new KeyBinding("key.examplemod.openclothing", Keyboard.KEY_K, "key.categories.examplemod");
         ClientRegistry.registerKeyBinding(openGuiKey);
     }
 
