@@ -26,6 +26,18 @@ public class ClothingGui extends GuiContainer {
     /** Max layer index (0-based), mirrors the 10-layer cap in ClothingInventory. */
     private static final int MAX_LAYER_INDEX = 9;
 
+    // Custom Icons
+    private static final ResourceLocation ICON_CHEST      = new ResourceLocation(ExampleMod.MODID, "textures/gui/icons/clothing_icon_chest.png");
+    private static final ResourceLocation ICON_RIGHT_ARM  = new ResourceLocation(ExampleMod.MODID, "textures/gui/icons/clothing_icon_right_arm.png");
+    private static final ResourceLocation ICON_LEFT_ARM   = new ResourceLocation(ExampleMod.MODID, "textures/gui/icons/clothing_icon_left_arm.png");
+    private static final ResourceLocation ICON_RIGHT_LEG  = new ResourceLocation(ExampleMod.MODID, "textures/gui/icons/clothing_icon_right_leg.png");
+    private static final ResourceLocation ICON_LEFT_LEG   = new ResourceLocation(ExampleMod.MODID, "textures/gui/icons/clothing_icon_left_leg.png");
+    private static final ResourceLocation ICON_RIGHT_SHOE = new ResourceLocation(ExampleMod.MODID, "textures/gui/icons/clothing_icon_right_shoe.png");
+    private static final ResourceLocation ICON_LEFT_SHOE  = new ResourceLocation(ExampleMod.MODID, "textures/gui/icons/clothing_icon_left_shoe.png");
+    private static final ResourceLocation ICON_HELMET     = new ResourceLocation("minecraft", "textures/items/empty_armor_slot_helmet.png");
+    private static final ResourceLocation ICON_LEGGINGS   = new ResourceLocation("minecraft", "textures/items/empty_armor_slot_leggings.png");
+    private static final ResourceLocation ICON_BOOTS      = new ResourceLocation("minecraft", "textures/items/empty_armor_slot_boots.png");
+
     /** Remembered across GUI open/close (client-side only). */
     private static int lastSelectedLayer = 0;
 
@@ -168,26 +180,8 @@ public class ClothingGui extends GuiContainer {
         int textWidth = this.fontRenderer.getStringWidth(layerText);
         this.fontRenderer.drawString(layerText, 51 - textWidth / 2, 28, 4210752);
 
-        // Chest arms mode indicator
-        IClothingInventory inv = this.mc.player.getCapability(ClothingProvider.CLOTHING_CAPABILITY, null);
-        if (inv != null) {
-            int layer = container.getCurrentLayer();
-
-            // Chest
-            boolean armsMode = inv.getChestArmsMode(layer);
-            this.fontRenderer.drawString(armsMode ? "Arms" : "Body", 138, 30, armsMode ? 0x55FF55 : 0x888888);
-
-            // Legs mode indicator
-            boolean legsMode = inv.getPantsLegsMode(layer);
-            // In separate mode, RightLeg is at 129, LeftLeg at 111.
-            // In merged mode, RightLeg is at 120.
-            // Text position needs to be consistent or avoid overlap.
-            this.fontRenderer.drawString(legsMode ? "Legs" : "Leg", 150, 48, legsMode ? 0x55FF55 : 0x888888);
-
-            // Feet mode indicator
-            boolean feetMode = inv.getShoesFeetMode(layer);
-            this.fontRenderer.drawString(feetMode ? "Feet" : "Foot", 150, 66, feetMode ? 0x55FF55 : 0x888888);
-        }
+        // Removed default text indicators as requested by user ("Arms", "Legs", etc.)
+        // Instead, we rely on the visual slot arrangement and background icons.
     }
 
     @Override
@@ -232,5 +226,51 @@ public class ClothingGui extends GuiContainer {
                 (float)(i + 51) - this.oldMouseX,
                 (float)(j + 75 - 50) - this.oldMouseY,
                 this.mc.player);
+
+        // Draw custom slot icons for empty slots
+        for (Slot slot : this.inventorySlots.inventorySlots) {
+            if (slot instanceof ClothingInventorySlotHandler && !slot.getHasStack()) {
+                ClothingInventorySlotHandler cSlot = (ClothingInventorySlotHandler) slot;
+                // Skip if slot is hidden (off-screen)
+                if (cSlot.xPos < 0 || cSlot.yPos < 0) continue;
+
+                ResourceLocation icon = null;
+                switch (cSlot.getCapabilitySlotIndex()) {
+                    case 0: icon = ICON_HELMET; break; // HEAD
+                    case 1: icon = ICON_RIGHT_ARM; break; // RIGHT_ARM
+                    case 2: icon = ICON_LEFT_ARM; break; // LEFT_ARM
+                    case 3: icon = ICON_CHEST; break; // CHEST
+                    case 4:
+                        // RIGHT_LEG / PANTS
+                        // If merged mode, use standard Minecraft icon. Else use custom icon.
+                        if (inv2 != null && inv2.getPantsLegsMode(container2.getCurrentLayer())) {
+                            icon = ICON_LEGGINGS;
+                        } else {
+                            icon = ICON_RIGHT_LEG;
+                        }
+                        break;
+                    case 5: icon = ICON_LEFT_LEG; break; // LEFT_LEG
+                    case 6:
+                        // RIGHT_FOOT / SHOES
+                        // If merged mode, use standard Minecraft icon. Else use custom icon.
+                        if (inv2 != null && inv2.getShoesFeetMode(container2.getCurrentLayer())) {
+                            icon = ICON_BOOTS;
+                        } else {
+                            icon = ICON_RIGHT_SHOE;
+                        }
+                        break;
+                    case 7: icon = ICON_LEFT_SHOE; break; // LEFT_FOOT
+                }
+
+                if (icon != null) {
+                    this.mc.getTextureManager().bindTexture(icon);
+                    GlStateManager.enableBlend(); // Enable blending for transparency
+                    // Draw icon (16x16) at slot pos
+                    // drawModalRectWithCustomSizedTexture assumes full texture is drawn
+                    drawModalRectWithCustomSizedTexture(i + slot.xPos, j + slot.yPos, 0, 0, 16, 16, 16, 16);
+                    GlStateManager.disableBlend();
+                }
+            }
+        }
     }
 }

@@ -36,6 +36,8 @@ public class ClothingInventorySlotHandler extends Slot {
     }
 
     private void setSlotBackground() {
+        // Custom icons are rendered in ClothingGui now to support mod resources without stitching
+        /*
         switch (slotType) {
             case HEAD:
                 this.setBackgroundName("minecraft:items/empty_armor_slot_helmet");
@@ -54,6 +56,7 @@ public class ClothingInventorySlotHandler extends Slot {
                 this.setBackgroundName("minecraft:items/empty_armor_slot_boots");
                 break;
         }
+        */
     }
 
     @Override
