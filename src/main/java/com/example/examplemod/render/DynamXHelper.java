@@ -86,11 +86,15 @@ public class DynamXHelper {
      * (the scene-graph path), then restores visibility.
      *
      * @param chestShowArms when slot==CHEST and true, also render arms alongside body
+     * @param pantsLegsMode when slot==RIGHT_LEG and true, also render both legs + body
+     * @param shoesFeetMode when slot==RIGHT_FOOT and true, also render both feet
      * @return true  — model was handled, caller must NOT call model.render() again
      *         false — not a DynamX armor model, caller must call model.render()
      */
     public static boolean renderDynamXArmorPart(
-            ModelBiped model, ClothingInventorySlot slot, boolean chestShowArms, float scale,
+            ModelBiped model, ClothingInventorySlot slot,
+            boolean chestShowArms, boolean pantsLegsMode, boolean shoesFeetMode,
+            float scale,
             Entity player, float limbSwing, float limbSwingAmount,
             float ageInTicks, float netHeadYaw, float headPitch) {
 
@@ -164,16 +168,29 @@ public class DynamXHelper {
                     if (leftArm != null) leftArm.showModel = true;
                     break;
                 case RIGHT_LEG:
+                    // Only render if pantsLegsMode is TRUE (covering both legs) OR this is the separate Right Slot
                     if (rightLeg != null) rightLeg.showModel = true;
+                    if (pantsLegsMode) {
+                        if (leftLeg != null) leftLeg.showModel = true;
+                        if (body != null) body.showModel = true; // Pants usually cover pelvis
+                    }
                     break;
                 case LEFT_LEG:
-                    if (leftLeg != null) leftLeg.showModel = true;
+                    // Render ONLY if separate mode
+                    if (!pantsLegsMode && leftLeg != null) {
+                        leftLeg.showModel = true;
+                    }
                     break;
                 case RIGHT_FOOT:
                     if (rightFoot != null) rightFoot.showModel = true;
+                    if (shoesFeetMode) {
+                        if (leftFoot != null) leftFoot.showModel = true;
+                    }
                     break;
                 case LEFT_FOOT:
-                    if (leftFoot != null) leftFoot.showModel = true;
+                     if (!shoesFeetMode && leftFoot != null) {
+                        leftFoot.showModel = true;
+                    }
                     break;
                 default:
                     break;

@@ -18,6 +18,10 @@ import java.util.Map;
 public class ClientEventHandler {
     private boolean layersInitialized = false;
 
+    // Reflection fields for GuiContainer
+    private static Field guiLeftField;
+    private static Field guiTopField;
+
     @SubscribeEvent
     public void onRenderPlayer(RenderPlayerEvent.Post event) {
         if (!layersInitialized) {
@@ -40,67 +44,63 @@ public class ClientEventHandler {
         if (!org.lwjgl.input.Mouse.getEventButtonState()) return;      // button pressed, not released
 
         GuiContainer gui = (GuiContainer) event.getGui();
+        Slot slot = getSlotAtMouse(gui);
 
-        // Primary: try hovered-slot reflection
-        Slot hovered = getHoveredSlot(gui);
-        boolean isArmor;
-        if (hovered != null) {
-            isArmor = isVanillaArmorSlot(hovered);
-        } else {
-            // Fallback: check mouse pixel position against the fixed armor-slot areas in GuiInventory
-            isArmor = isMouseOverArmorSlot(gui);
+        if (slot != null && isVanillaArmorSlot(slot)) {
+            event.setCanceled(true);
+            ClothingNetworkHandler.INSTANCE.sendToServer(new PacketOpenClothingGUI());
         }
-        if (!isArmor) return;
-
-        event.setCanceled(true);
-        ClothingNetworkHandler.INSTANCE.sendToServer(new PacketOpenClothingGUI());
     }
 
-    // Cache the reflected field to avoid repeated lookups
-    private static Field hoveredSlotField = null;
-
-    private static Slot getHoveredSlot(GuiContainer container) {
+    private static Slot getSlotAtMouse(GuiContainer gui) {
         try {
-            if (hoveredSlotField == null) {
+            if (guiLeftField == null) {
                 try {
-                    // MCP deobfuscated name (dev environment)
-                    hoveredSlotField = GuiContainer.class.getDeclaredField("hoveredSlot");
+                    guiLeftField = GuiContainer.class.getDeclaredField("guiLeft");
+                    guiLeftField.setAccessible(true);
+                    guiTopField = GuiContainer.class.getDeclaredField("guiTop");
+                    guiTopField.setAccessible(true);
                 } catch (NoSuchFieldException e) {
-                    // SRG name for production environment
-                    hoveredSlotField = GuiContainer.class.getDeclaredField("field_147006_n");
+                    guiLeftField = GuiContainer.class.getDeclaredField("field_147003_i");
+                    guiLeftField.setAccessible(true);
+                    guiTopField = GuiContainer.class.getDeclaredField("field_147009_r");
+                    guiTopField.setAccessible(true);
                 }
-                hoveredSlotField.setAccessible(true);
             }
-            return (Slot) hoveredSlotField.get(container);
+
+            int guiLeft = guiLeftField.getInt(gui);
+            int guiTop = guiTopField.getInt(gui);
+
+            Minecraft mc = Minecraft.getMinecraft();
+            int mouseX = org.lwjgl.input.Mouse.getEventX() * gui.width / mc.displayWidth;
+            int mouseY = gui.height - org.lwjgl.input.Mouse.getEventY() * gui.height / mc.displayHeight - 1;
+
+            mouseX -= guiLeft;
+            mouseY -= guiTop;
+
+            for (Slot slot : gui.inventorySlots.inventorySlots) {
+                if (mouseX >= slot.xPos && mouseX < slot.xPos + 16 &&
+                    mouseY >= slot.yPos && mouseY < slot.yPos + 16) {
+                    return slot;
+                }
+            }
         } catch (Exception e) {
-            return null;
+            e.printStackTrace();
         }
+        return null;
     }
 
     private static boolean isVanillaArmorSlot(Slot slot) {
         if (slot == null) return false;
-        // Works in dev environment with MCP mappings
-        if (slot.getClass().getSimpleName().equals("SlotArmor")) return true;
-        // Fallback: armor slots in vanilla GuiInventory (ContainerPlayer) are at x=8, y=8/26/44/62
-        return slot.xPos == 8 && (slot.yPos == 8 || slot.yPos == 26 || slot.yPos == 44 || slot.yPos == 62);
-    }
-
-    /**
-     * Pixel-level fallback: GuiInventory is always 176x166; the four vanilla armor slots
-     * sit at guiLeft+8, guiTop+8/26/44/62, each 16px wide and tall.
-     */
-    private static boolean isMouseOverArmorSlot(GuiContainer gui) {
-        Minecraft mc = Minecraft.getMinecraft();
-        int mouseX = org.lwjgl.input.Mouse.getX() * gui.width / mc.displayWidth;
-        int mouseY = gui.height - org.lwjgl.input.Mouse.getY() * gui.height / mc.displayHeight - 1;
-        int guiLeft = (gui.width  - 176) / 2;
-        int guiTop  = (gui.height - 166) / 2;
-        int relX = mouseX - guiLeft;
-        int relY = mouseY - guiTop;
-        return relX >= 8 && relX < 24
-                && ((relY >= 8  && relY < 24)
-                 || (relY >= 26 && relY < 42)
-                 || (relY >= 44 && relY < 60)
-                 || (relY >= 62 && relY < 78));
+        // In ContainerPlayer, slots 5, 6, 7, 8 are armor slots (or 36,37,38,39 depending on inventoryPlayer mapping?)
+        // ContainerPlayer adds slots:
+        // 0-4: Crafting (5 slots)
+        // 5-8: Armor (4 slots)
+        // 9-35: Inventory (27)
+        // 36-44: Hotbar (9)
+        // So indices 5, 6, 7, 8 are armor.
+        // Also check simplified class name for mod compatibility
+        return (slot.getSlotIndex() >= 36 && slot.getSlotIndex() <= 39 && slot.getClass().getSimpleName().contains("Armor")) // InventoryPlayer armor slots are 36-39
+            || (slot.slotNumber >= 5 && slot.slotNumber <= 8); // ContainerPlayer slot numbers
     }
 }

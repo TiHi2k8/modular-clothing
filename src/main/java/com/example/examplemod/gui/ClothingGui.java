@@ -6,7 +6,7 @@ import com.example.examplemod.capability.ClothingProvider;
 import com.example.examplemod.capability.IClothingInventory;
 import com.example.examplemod.network.ClothingNetworkHandler;
 import com.example.examplemod.network.PacketChangeClothingLayer;
-import com.example.examplemod.network.PacketSetChestArmsMode;
+import com.example.examplemod.network.PacketSetPartMode;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.gui.inventory.GuiInventory;
@@ -78,21 +78,44 @@ public class ClothingGui extends GuiContainer {
     protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
         ClothingContainer container = (ClothingContainer) this.inventorySlots;
 
-        // Shift+left-click on CHEST slot toggles whether arms render alongside the chest piece
+        // Shift+left-click on slots to toggle rendering modes (Single vs Double)
         if (mouseButton == 0 && isShiftKeyDown() && this.mc.player.inventory.getItemStack().isEmpty()) {
             for (int slotIdx = 0; slotIdx < 8; slotIdx++) {
                 Slot slot = this.inventorySlots.getSlot(slotIdx);
                 if (isMouseOverSlot(slot, mouseX, mouseY) && slot instanceof ClothingInventorySlotHandler) {
                     ClothingInventorySlotHandler cSlot = (ClothingInventorySlotHandler) slot;
-                    if (cSlot.getCapabilitySlotIndex() == ClothingInventorySlot.CHEST.getIndex()) {
-                        int layer = container.getCurrentLayer();
-                        IClothingInventory inv = this.mc.player.getCapability(ClothingProvider.CLOTHING_CAPABILITY, null);
-                        if (inv != null) {
+                    int capSlotIndex = cSlot.getCapabilitySlotIndex();
+                    int layer = container.getCurrentLayer();
+                    IClothingInventory inv = this.mc.player.getCapability(ClothingProvider.CLOTHING_CAPABILITY, null);
+
+                    if (inv != null) {
+                        // Chest: Arms Mode
+                        if (capSlotIndex == ClothingInventorySlot.CHEST.getIndex()) {
                             boolean newMode = !inv.getChestArmsMode(layer);
-                            inv.setChestArmsMode(layer, newMode); // client-side immediate preview
-                            ClothingNetworkHandler.INSTANCE.sendToServer(new PacketSetChestArmsMode(layer, newMode));
+                            inv.setChestArmsMode(layer, newMode);
+                            // Use generic packet for all mode switches
+                            ClothingNetworkHandler.INSTANCE.sendToServer(new PacketSetPartMode(layer, 0, newMode));
+                            container.updateSlotPositions(); // Update container slots (hides arms if necessary)
+                            return;
                         }
-                        return;
+                        // Pants: Legs Mode (Double vs Single)
+                        else if (capSlotIndex == ClothingInventorySlot.RIGHT_LEG.getIndex() ||
+                                 capSlotIndex == ClothingInventorySlot.LEFT_LEG.getIndex()) {
+                            boolean newMode = !inv.getPantsLegsMode(layer);
+                            inv.setPantsLegsMode(layer, newMode);
+                            ClothingNetworkHandler.INSTANCE.sendToServer(new PacketSetPartMode(layer, 1, newMode));
+                            container.updateSlotPositions();
+                            return;
+                        }
+                        // Shoes: Feet Mode (Double vs Single)
+                        else if (capSlotIndex == ClothingInventorySlot.RIGHT_FOOT.getIndex() ||
+                                 capSlotIndex == ClothingInventorySlot.LEFT_FOOT.getIndex()) {
+                            boolean newMode = !inv.getShoesFeetMode(layer);
+                            inv.setShoesFeetMode(layer, newMode);
+                            ClothingNetworkHandler.INSTANCE.sendToServer(new PacketSetPartMode(layer, 2, newMode));
+                            container.updateSlotPositions();
+                            return;
+                        }
                     }
                 }
             }
@@ -133,7 +156,7 @@ public class ClothingGui extends GuiContainer {
         super.drawScreen(mouseX, mouseY, partialTicks);
         this.renderHoveredToolTip(mouseX, mouseY);
 
-        String hint = "Right-click: transform  |  Shift+click chest: toggle arms";
+        String hint = "Right-click: transform  |  Shift+click part: toggle mode"; // Should validly update this hint
         int hintWidth = this.fontRenderer.getStringWidth(hint);
         this.fontRenderer.drawString(hint, (this.width / 2) - hintWidth / 2, this.guiTop + this.ySize + 4, 0x888888);
     }
@@ -145,13 +168,25 @@ public class ClothingGui extends GuiContainer {
         int textWidth = this.fontRenderer.getStringWidth(layerText);
         this.fontRenderer.drawString(layerText, 51 - textWidth / 2, 28, 4210752);
 
-        // Chest arms mode indicator — shown to the right of the CHEST slot (x=120, y=26)
+        // Chest arms mode indicator
         IClothingInventory inv = this.mc.player.getCapability(ClothingProvider.CLOTHING_CAPABILITY, null);
         if (inv != null) {
-            boolean armsMode = inv.getChestArmsMode(container.getCurrentLayer());
-            // CHEST slot is at x=120, y=26 in the container; indicator at x=138, y=30
-            this.fontRenderer.drawString(armsMode ? "Arms" : "Body", 138, 30,
-                    armsMode ? 0x55FF55 : 0x888888);
+            int layer = container.getCurrentLayer();
+
+            // Chest
+            boolean armsMode = inv.getChestArmsMode(layer);
+            this.fontRenderer.drawString(armsMode ? "Arms" : "Body", 138, 30, armsMode ? 0x55FF55 : 0x888888);
+
+            // Legs mode indicator
+            boolean legsMode = inv.getPantsLegsMode(layer);
+            // In separate mode, RightLeg is at 129, LeftLeg at 111.
+            // In merged mode, RightLeg is at 120.
+            // Text position needs to be consistent or avoid overlap.
+            this.fontRenderer.drawString(legsMode ? "Legs" : "Leg", 150, 48, legsMode ? 0x55FF55 : 0x888888);
+
+            // Feet mode indicator
+            boolean feetMode = inv.getShoesFeetMode(layer);
+            this.fontRenderer.drawString(feetMode ? "Feet" : "Foot", 150, 66, feetMode ? 0x55FF55 : 0x888888);
         }
     }
 
@@ -160,8 +195,35 @@ public class ClothingGui extends GuiContainer {
         GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
         ClothingContainer container2 = (ClothingContainer) this.inventorySlots;
         IClothingInventory inv2 = this.mc.player.getCapability(ClothingProvider.CLOTHING_CAPABILITY, null);
-        boolean chestArms = inv2 != null && inv2.getChestArmsMode(container2.getCurrentLayer());
-        this.mc.getTextureManager().bindTexture(chestArms ? TEXTURE_NA : TEXTURE);
+
+        ResourceLocation currentTexture = TEXTURE;
+
+        if (inv2 != null) {
+            int layer = container2.getCurrentLayer();
+            boolean chestArms = inv2.getChestArmsMode(layer);
+            boolean pantsLegs = inv2.getPantsLegsMode(layer);
+            boolean shoesFeet = inv2.getShoesFeetMode(layer);
+
+            // Construct texture name based on flags:
+            // Base: clothing_gui
+            // Suffix parts:
+            // _n (if any is true)
+            // a (if chestArms)
+            // l (if pantsLegs)
+            // b (if shoesFeet)
+
+            if (chestArms || pantsLegs || shoesFeet) {
+                StringBuilder suffix = new StringBuilder("_n");
+                if (chestArms) suffix.append("a");
+                if (pantsLegs) suffix.append("l");
+                if (shoesFeet) suffix.append("b");
+
+                String path = "textures/gui/clothing_gui" + suffix.toString() + ".png";
+                currentTexture = new ResourceLocation(ExampleMod.MODID, path);
+            }
+        }
+
+        this.mc.getTextureManager().bindTexture(currentTexture);
         int i = this.guiLeft;
         int j = this.guiTop;
         this.drawTexturedModalRect(i, j, 0, 0, this.xSize, this.ySize);

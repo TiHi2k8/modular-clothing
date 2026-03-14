@@ -28,20 +28,20 @@ public class ClothingContainer extends Container {
         // Chest
         this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 3, 120, 26, ClothingInventorySlot.CHEST, player, layerSupplier));
 
-        // Right Arm
+        // Right Arm (Screen Right, Player Left)
         this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 1, 138, 26, ClothingInventorySlot.RIGHT_ARM, player, layerSupplier));
-        // Left Arm
+        // Left Arm (Screen Left, Player Right)
         this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 2, 102, 26, ClothingInventorySlot.LEFT_ARM, player, layerSupplier));
 
-        // Right Leg
-        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 4, 129, 44, ClothingInventorySlot.RIGHT_LEG, player, layerSupplier));
-        // Left Leg
-        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 5, 111, 44, ClothingInventorySlot.LEFT_LEG, player, layerSupplier));
+        // Right Leg (Slot 4)
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 4, 120, 44, ClothingInventorySlot.RIGHT_LEG, player, layerSupplier));
+        // Left Leg (Slot 5)
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 5, -1000, -1000, ClothingInventorySlot.LEFT_LEG, player, layerSupplier));
 
-        // Right Foot
-        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 6, 129, 62, ClothingInventorySlot.RIGHT_FOOT, player, layerSupplier));
-        // Left Foot
-        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 7, 111, 62, ClothingInventorySlot.LEFT_FOOT, player, layerSupplier));
+        // Right Foot (Slot 6)
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 6, 120, 62, ClothingInventorySlot.RIGHT_FOOT, player, layerSupplier));
+        // Left Foot (Slot 7)
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 7, -1000, -1000, ClothingInventorySlot.LEFT_FOOT, player, layerSupplier));
 
 
         // Player Inventory
@@ -55,6 +55,9 @@ public class ClothingContainer extends Container {
         for (int i = 0; i < 9; ++i) {
             this.addSlotToContainer(new Slot(playerInventory, i, 8 + i * 18, 142));
         }
+
+        // Initialize slot positions based on saved modes
+        updateSlotPositions();
     }
 
     @Override
@@ -121,9 +124,89 @@ public class ClothingContainer extends Container {
         return itemstack;
     }
 
+    /**
+     * Updates slot positions based on current layer mode (Merged vs Separate).
+     */
+    public void updateSlotPositions() {
+        boolean pantsDoubleMode = clothingInventory.getPantsLegsMode(currentLayer);
+        boolean shoesDoubleMode = clothingInventory.getShoesFeetMode(currentLayer);
+        boolean chestArmsMode   = clothingInventory.getChestArmsMode(currentLayer);
+
+        // Slots indices in inventorySlots list:
+        // 0: Head
+        // 1: Chest
+        // 2: Right Arm (inv slot 1)
+        // 3: Left Arm (inv slot 2)
+        // 4: Right Leg (inv slot 4)
+        // 5: Left Leg (inv slot 5)
+        // 6: Right Foot (inv slot 6)
+        // 7: Left Foot (inv slot 7)
+
+        Slot rightArm = this.inventorySlots.get(2); // Wait, constructor order: Head(0), Chest(1), RArm(2), LArm(3)
+        // Check Constructor:
+        // this.addSlotToContainer(..., 0, ...); // Head -> Index 0
+        // this.addSlotToContainer(..., 3, ...); // Chest -> Index 1
+        // this.addSlotToContainer(..., 1, ...); // RArm -> Index 2
+        // this.addSlotToContainer(..., 2, ...); // LArm -> Index 3
+
+        // Correct Indices based on addition order:
+        // 0: Head
+        // 1: Chest
+        // 2: Right Arm
+        // 3: Left Arm
+        // 4: Right Leg
+        // 5: Left Leg
+        // 6: Right Foot
+        // 7: Left Foot
+
+        rightArm = this.inventorySlots.get(2);
+        Slot leftArm  = this.inventorySlots.get(3);
+
+        if (chestArmsMode) {
+            // Merged: Arms hidden (rendered by chest)
+            rightArm.xPos = -1000;
+            leftArm.xPos  = -1000;
+        } else {
+            // Separate: Arms visible
+            rightArm.xPos = 138;
+            leftArm.xPos  = 102;
+        }
+
+        Slot rightLeg = this.inventorySlots.get(4);
+        Slot leftLeg  = this.inventorySlots.get(5);
+
+        if (pantsDoubleMode) {
+            // Merged: RightLeg centered, LeftLeg hidden
+            rightLeg.xPos = 120;
+            leftLeg.xPos  = -1000;
+            leftLeg.yPos  = -1000;
+        } else {
+            // Separate: RightLeg right(129), LeftLeg left(111)
+            rightLeg.xPos = 129;
+            leftLeg.xPos  = 111;
+            leftLeg.yPos  = 44; // Restore Y
+        }
+
+        Slot rightFoot = this.inventorySlots.get(6);
+        Slot leftFoot  = this.inventorySlots.get(7);
+
+        if (shoesDoubleMode) {
+            // Merged: RightFoot centered, LeftFoot hidden
+            rightFoot.xPos = 120;
+            leftFoot.xPos  = -1000;
+            leftFoot.yPos  = -1000;
+        } else {
+            // Separate: RightFoot right(129), LeftFoot left(111)
+            rightFoot.xPos = 129;
+            leftFoot.xPos  = 111;
+            leftFoot.yPos  = 62; // Restore Y
+        }
+    }
+
     public void setCurrentLayer(int layer) {
         if (layer >= 0 && layer <= 9) {
             this.currentLayer = layer;
+            updateSlotPositions();
         }
     }
 

@@ -25,4 +25,12 @@ public interface IClothingInventory extends INBTSerializable<NBTTagCompound> {
     // CHEST slot: if true, the chest piece also renders both arms in addition to the body
     boolean getChestArmsMode(int layer);
     void setChestArmsMode(int layer, boolean showArms);
+
+    // LEGS slot: if true, the pants piece also renders both legs in addition to the pelvis/body
+    boolean getPantsLegsMode(int layer);
+    void setPantsLegsMode(int layer, boolean showLegs);
+
+    // FEET slot: if true, the shoes piece also renders both feet
+    boolean getShoesFeetMode(int layer);
+    void setShoesFeetMode(int layer, boolean showFeet);
 }

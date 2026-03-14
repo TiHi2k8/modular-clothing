@@ -15,6 +15,10 @@ public class ClothingInventory implements IClothingInventory {
     private final List<float[][]> transforms = new ArrayList<>();
     // Per-layer chest arms mode: true = render arms alongside body for CHEST slot
     private final List<Boolean> chestArmsModes = new ArrayList<>();
+    // Per-layer legs mode: true = render pants-legs alongside body (for LEGS slot)
+    private final List<Boolean> pantsLegsModes = new ArrayList<>();
+    // Per-layer feet mode: true = render shoes-feet (for FEET slot)
+    private final List<Boolean> shoesFeetModes = new ArrayList<>();
 
     private static final int MAX_LAYERS = 10;
 
@@ -65,6 +69,8 @@ public class ClothingInventory implements IClothingInventory {
         }
         transforms.add(layerTransforms);
         chestArmsModes.add(false);
+        pantsLegsModes.add(false);
+        shoesFeetModes.add(false);
     }
 
     @Override
@@ -73,6 +79,8 @@ public class ClothingInventory implements IClothingInventory {
             layers.remove(layers.size() - 1);
             if (!transforms.isEmpty()) transforms.remove(transforms.size() - 1);
             if (!chestArmsModes.isEmpty()) chestArmsModes.remove(chestArmsModes.size() - 1);
+            if (!pantsLegsModes.isEmpty()) pantsLegsModes.remove(pantsLegsModes.size() - 1);
+            if (!shoesFeetModes.isEmpty()) shoesFeetModes.remove(shoesFeetModes.size() - 1);
         }
     }
 
@@ -108,6 +116,36 @@ public class ClothingInventory implements IClothingInventory {
     }
 
     @Override
+    public boolean getPantsLegsMode(int layer) {
+        if (layer >= 0 && layer < pantsLegsModes.size()) {
+            return pantsLegsModes.get(layer);
+        }
+        return false;
+    }
+
+    @Override
+    public void setPantsLegsMode(int layer, boolean showLegs) {
+        if (layer >= 0 && layer < pantsLegsModes.size()) {
+            pantsLegsModes.set(layer, showLegs);
+        }
+    }
+
+    @Override
+    public boolean getShoesFeetMode(int layer) {
+        if (layer >= 0 && layer < shoesFeetModes.size()) {
+            return shoesFeetModes.get(layer);
+        }
+        return false;
+    }
+
+    @Override
+    public void setShoesFeetMode(int layer, boolean showFeet) {
+        if (layer >= 0 && layer < shoesFeetModes.size()) {
+            shoesFeetModes.set(layer, showFeet);
+        }
+    }
+
+    @Override
     public ItemStack getStackInLayer(int layer, int slot) {
         if (layer >= 0 && layer < layers.size() && slot >= 0 && slot < 8) {
             return layers.get(layer)[slot];
@@ -127,6 +165,8 @@ public class ClothingInventory implements IClothingInventory {
         layers.clear();
         transforms.clear();
         chestArmsModes.clear();
+        pantsLegsModes.clear();
+        shoesFeetModes.clear();
         int count = other.getLayerCount();
         for (int l = 0; l < count; l++) {
             addLayer();
@@ -136,6 +176,8 @@ public class ClothingInventory implements IClothingInventory {
                 setSlotTransform(l, s, t[0], t[1], t[2], t[3], t[4], t[5]);
             }
             setChestArmsMode(l, other.getChestArmsMode(l));
+            setPantsLegsMode(l, other.getPantsLegsMode(l));
+            setShoesFeetMode(l, other.getShoesFeetMode(l));
         }
     }
 
@@ -184,9 +226,16 @@ public class ClothingInventory implements IClothingInventory {
                 }
             }
 
-            // Chest arms mode (only write when true)
-            if (l < chestArmsModes.size() && chestArmsModes.get(l)) {
-                layerTag.setBoolean("ChestArms", true);
+            // Chest arms mode
+            // Explicitly saving boolean to ensure false state is persisted if needed
+            if (l < chestArmsModes.size()) {
+                layerTag.setBoolean("ChestArms", chestArmsModes.get(l));
+            }
+            if (l < pantsLegsModes.size()) {
+                layerTag.setBoolean("PantsLegs", pantsLegsModes.get(l));
+            }
+            if (l < shoesFeetModes.size()) {
+                layerTag.setBoolean("ShoesFeet", shoesFeetModes.get(l));
             }
 
             layerList.appendTag(layerTag);
@@ -201,6 +250,8 @@ public class ClothingInventory implements IClothingInventory {
         layers.clear();
         transforms.clear();
         chestArmsModes.clear();
+        pantsLegsModes.clear();
+        shoesFeetModes.clear();
 
         if (nbt.hasKey("Layers", Constants.NBT.TAG_LIST)) {
             NBTTagList layerList = nbt.getTagList("Layers", Constants.NBT.TAG_COMPOUND);
@@ -248,8 +299,14 @@ public class ClothingInventory implements IClothingInventory {
                 }
 
                 // Chest arms mode
-                if (layerTag.getBoolean("ChestArms")) {
-                    chestArmsModes.set(layerIdx, true);
+                if (layerTag.hasKey("ChestArms")) {
+                    chestArmsModes.set(layerIdx, layerTag.getBoolean("ChestArms"));
+                }
+                if (layerTag.hasKey("PantsLegs")) {
+                    pantsLegsModes.set(layerIdx, layerTag.getBoolean("PantsLegs"));
+                }
+                if (layerTag.hasKey("ShoesFeet")) {
+                    shoesFeetModes.set(layerIdx, layerTag.getBoolean("ShoesFeet"));
                 }
             }
         } else if (nbt.hasKey("Items", Constants.NBT.TAG_LIST)) {

@@ -64,8 +64,28 @@ public class ClothingRenderLayer implements LayerRenderer<AbstractClientPlayer> 
                 int layerIndex = i / 8;
                 int slotIndex  = i % 8;
 
+                // Check for Merged Modes and skip rendering secondary slots if active
+                boolean layerChestArmsMode = inventory.getChestArmsMode(layerIndex);
+                if (layerChestArmsMode && (slotType == ClothingInventorySlot.RIGHT_ARM || slotType == ClothingInventorySlot.LEFT_ARM)) {
+                    continue; // Skip separate arms if Chest is handling them
+                }
+
+                boolean layerPantsLegsMode = inventory.getPantsLegsMode(layerIndex);
+                if (layerPantsLegsMode && (slotType == ClothingInventorySlot.LEFT_LEG)) {
+                    continue; // Skip separate left leg if Right Leg (Pants) is handling both
+                }
+
+                boolean layerShoesFeetMode = inventory.getShoesFeetMode(layerIndex);
+                if (layerShoesFeetMode && (slotType == ClothingInventorySlot.LEFT_FOOT)) {
+                    continue; // Skip separate left foot if Right Foot (Shoes) is handling both
+                }
+
                 boolean chestArmsMode = (slotType == ClothingInventorySlot.CHEST)
-                        && inventory.getChestArmsMode(layerIndex);
+                        && layerChestArmsMode;
+                boolean pantsLegsMode = (slotType == ClothingInventorySlot.RIGHT_LEG || slotType == ClothingInventorySlot.LEFT_LEG)
+                        && layerPantsLegsMode;
+                boolean shoesFeetMode = (slotType == ClothingInventorySlot.RIGHT_FOOT || slotType == ClothingInventorySlot.LEFT_FOOT)
+                        && layerShoesFeetMode;
 
                 // Show only the standard biped part(s) matching this slot.
                 // Mirroring: from the camera's view, bipedLeftArm/Leg appears on screen RIGHT
@@ -90,16 +110,37 @@ public class ClothingRenderLayer implements LayerRenderer<AbstractClientPlayer> 
                         model.bipedRightArm.showModel = true; // screen left = player's right
                         break;
                     case RIGHT_LEG:
-                        model.bipedLeftLeg.showModel  = true; // screen right = player's left
+                        // "Pants" slot, located at Screen Right (or Center)
+                        if (pantsLegsMode) {
+                            model.bipedBody.showModel = true; // Body covered by pants
+                            model.bipedLeftLeg.showModel = true; // Screen Right Leg (Player Left)
+                            model.bipedRightLeg.showModel = true; // Screen Left Leg (Player Right)
+                        } else {
+                             // Separate: Screen Right Slot -> renders Screen Right Leg (Player Left)
+                            model.bipedLeftLeg.showModel  = true;
+                        }
                         break;
                     case LEFT_LEG:
-                        model.bipedRightLeg.showModel = true; // screen left = player's right
+                        // Separate: Screen Left Slot -> renders Screen Left Leg (Player Right)
+                         if (!pantsLegsMode) {
+                            model.bipedRightLeg.showModel = true;
+                         }
                         break;
                     case RIGHT_FOOT:
-                        model.bipedLeftLeg.showModel  = true; // screen right = player's left
+                        // "Shoes" slot, Screen Right
+                        if (shoesFeetMode) {
+                             model.bipedLeftLeg.showModel = true; // Screen Right Foot
+                             model.bipedRightLeg.showModel = true; // Screen Left Foot
+                        } else {
+                            // Separate: Right only -> Screen Right Foot
+                            model.bipedLeftLeg.showModel = true;
+                        }
                         break;
                     case LEFT_FOOT:
-                        model.bipedRightLeg.showModel = true; // screen left = player's right
+                        // Separate: Left only -> Screen Left Foot
+                        if (!shoesFeetMode) {
+                            model.bipedRightLeg.showModel = true;
+                        }
                         break;
                 }
 
@@ -148,7 +189,9 @@ public class ClothingRenderLayer implements LayerRenderer<AbstractClientPlayer> 
                     GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
 
                     boolean handledByDynamX = DynamXHelper.renderDynamXArmorPart(
-                            model, slotType, chestArmsMode, scale,
+                            model, slotType,
+                            chestArmsMode, pantsLegsMode, shoesFeetMode,
+                            scale,
                             player, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
                     if (!handledByDynamX) {
                         model.render(player, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, scale);
