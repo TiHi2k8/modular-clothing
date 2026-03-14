@@ -11,6 +11,8 @@ import net.minecraft.client.gui.inventory.GuiInventory;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
+import java.util.Arrays;
+
 import java.io.IOException;
 
 /**
@@ -28,6 +30,7 @@ public class GuiClothingTransform extends GuiScreen {
     private static final int BTN_CANCEL       = 1;
     private static final int BTN_RESET        = 2;
     private static final int BTN_SCALE_TOGGLE = 3;
+    private static final int BTN_PRESETS      = 4;
 
     private final ClothingGui parent;
     private final int slotIndex;
@@ -123,9 +126,10 @@ public class GuiClothingTransform extends GuiScreen {
             fieldScaleX.setFocused(true);
 
             int by = startY + 120;
-            this.buttonList.add(new GuiButton(BTN_APPLY,  fx - 45, by, 42, 20, "Apply"));
-            this.buttonList.add(new GuiButton(BTN_RESET,  fx +  2, by, 42, 20, "Reset"));
-            this.buttonList.add(new GuiButton(BTN_CANCEL, fx + 49, by, 42, 20, "Cancel"));
+            this.buttonList.add(new GuiButton(BTN_APPLY,   fx - 45, by,      42, 20, "Apply"));
+            this.buttonList.add(new GuiButton(BTN_RESET,   fx +  2, by,      42, 20, "Reset"));
+            this.buttonList.add(new GuiButton(BTN_CANCEL,  fx + 49, by,      42, 20, "Cancel"));
+            this.buttonList.add(new GuiButton(BTN_PRESETS, fx - 45, by + 24, 134, 20, "Presets..."));
         } else {
             // Per-axis scale: three scale fields + three offset fields
             fieldScaleX = makeField(0, fx, startY,       cScaleX);
@@ -137,9 +141,10 @@ public class GuiClothingTransform extends GuiScreen {
             fieldScaleX.setFocused(true);
 
             int by = startY + 138;
-            this.buttonList.add(new GuiButton(BTN_APPLY,  fx - 45, by, 42, 20, "Apply"));
-            this.buttonList.add(new GuiButton(BTN_RESET,  fx +  2, by, 42, 20, "Reset"));
-            this.buttonList.add(new GuiButton(BTN_CANCEL, fx + 49, by, 42, 20, "Cancel"));
+            this.buttonList.add(new GuiButton(BTN_APPLY,   fx - 45, by,      42, 20, "Apply"));
+            this.buttonList.add(new GuiButton(BTN_RESET,   fx +  2, by,      42, 20, "Reset"));
+            this.buttonList.add(new GuiButton(BTN_CANCEL,  fx + 49, by,      42, 20, "Cancel"));
+            this.buttonList.add(new GuiButton(BTN_PRESETS, fx - 45, by + 24, 134, 20, "Presets..."));
         }
     }
 
@@ -183,6 +188,22 @@ public class GuiClothingTransform extends GuiScreen {
 
     @Override
     protected void actionPerformed(GuiButton button) throws IOException {
+        if (button.id == BTN_PRESETS) {
+            saveFieldValues();
+            try {
+                float sx = Float.parseFloat(cScaleX.trim());
+                float sy = perAxisMode ? Float.parseFloat(cScaleY.trim()) : sx;
+                float sz = perAxisMode ? Float.parseFloat(cScaleZ.trim()) : sx;
+                float ox = Float.parseFloat(cOffX.trim());
+                float oy = Float.parseFloat(cOffY.trim());
+                float oz = Float.parseFloat(cOffZ.trim());
+                this.mc.displayGuiScreen(new GuiClothingPresets(this, sx, sy, sz, ox, oy, oz));
+            } catch (NumberFormatException e) {
+                errorMessage = "Fix values before opening presets";
+            }
+            return;
+        }
+
         if (button.id == BTN_SCALE_TOGGLE) {
             saveFieldValues();
             perAxisMode = !perAxisMode;
@@ -311,6 +332,24 @@ public class GuiClothingTransform extends GuiScreen {
         fieldOffY.mouseClicked(mouseX, mouseY, mouseButton);
         fieldOffZ.mouseClicked(mouseX, mouseY, mouseButton);
         super.mouseClicked(mouseX, mouseY, mouseButton);
+    }
+
+    /**
+     * Called by GuiClothingPresets when the player clicks "Load" on a preset.
+     * Fills all fields and switches to per-axis mode if the scale values differ.
+     */
+    public void applyPreset(float sx, float sy, float sz, float ox, float oy, float oz) {
+        // Use uniform mode when all three scale components are equal
+        perAxisMode = !(sx == sy && sy == sz);
+        cScaleX = String.format("%.4f", sx);
+        cScaleY = String.format("%.4f", sy);
+        cScaleZ = String.format("%.4f", sz);
+        cOffX   = String.format("%.4f", ox);
+        cOffY   = String.format("%.4f", oy);
+        cOffZ   = String.format("%.4f", oz);
+        this.buttonList.clear();
+        buildLayout();
+        tryApplyLivePreview();
     }
 
     @Override

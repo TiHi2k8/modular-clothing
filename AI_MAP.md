@@ -31,6 +31,13 @@ This file is a table of contents for AI agents. It lists **all** key classes and
 - **`PacketChangeClothingLayer.java`**: Client → Server. Requests changing the active clothing layer. Enforces the 10-layer cap server-side.
 - **`PacketOpenClothingGUI.java`**: Client → Server. Requests opening the clothing inventory GUI via keybind.
 - **`PacketUpdateClothingTransform.java`**: Client → Server. Sent by `GuiClothingTransform` when the player confirms new Scale/XYZ offset values for a specific layer+slot.
+- **`PacketRequestPresetList.java`**: Client → Server. Empty packet asking server to send back the current preset list.
+- **`PacketPresetList.java`**: Server → Client. Full list of transform presets. Delivered to the open `GuiClothingPresets` via static callback.
+- **`PacketSavePreset.java`**: Client → Server. Saves (or overwrites) a named transform preset to `clothing_presets.json`. Any player can save.
+- **`PacketDeletePreset.java`**: Client → Server. Deletes a named preset. Server enforces OP permission (level ≥ 2) before deleting.
+
+## 🗄️ Preset Storage (`com.example.examplemod.preset`)
+- **`TransformPresetManager.java`**: Server-side manager. Reads/writes `<game_dir>/clothing_presets.json` (Gson). Survives server restarts. Methods: `load`, `addOrUpdate`, `delete`.
 
 ---
 
@@ -39,7 +46,8 @@ This file is a table of contents for AI agents. It lists **all** key classes and
 - **`ClothingContainer.java`**: Server-side inventory logic. Handles slot layout (clothing slots + player inventory + hotbar) and `Shift-Click` transfer logic. `setCurrentLayer` clamps to 0–9.
 - **`ClothingGui.java`**: Client-side screen. Renders the GUI texture, the player model preview, and layer control buttons (+ / −) positioned **above** the player preview. Right-clicking any of the 8 clothing slots opens `GuiClothingTransform`. Remembers the last open layer across GUI sessions via a static field.
 - **`ClothingInventorySlotHandler.java`**: Custom `Slot` implementation linking the GUI to the capability, handling valid armor checks and empty-slot background textures.
-- **`GuiClothingTransform.java`**: Sub-screen opened by right-clicking a clothing slot. Presents four text fields (Scale, X/Y/Z offset). On "Apply" sends `PacketUpdateClothingTransform`; on "Cancel" returns to `ClothingGui`.
+- **`GuiClothingTransform.java`**: Sub-screen opened by right-clicking a clothing slot. Presents Scale (uniform or per-axis X/Y/Z) and XYZ offset fields. Buttons: Apply, Reset, Cancel, Scale toggle, Presets. "Presets..." opens `GuiClothingPresets`.
+- **`GuiClothingPresets.java`**: Preset browser opened from `GuiClothingTransform`. Shows server-stored named transform presets with search/scroll. Any player can save; only OPs can delete. Uses `PacketRequestPresetList`, `PacketSavePreset`, `PacketDeletePreset`, `PacketPresetList`.
 
 ---
 

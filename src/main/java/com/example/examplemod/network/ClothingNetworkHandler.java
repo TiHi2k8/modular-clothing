@@ -17,6 +17,10 @@ public class ClothingNetworkHandler {
         INSTANCE.registerMessage(PacketUpdateClothingTransform.Handler.class, PacketUpdateClothingTransform.class, packetId++, Side.SERVER);
         INSTANCE.registerMessage(PacketSetChestArmsMode.Handler.class,        PacketSetChestArmsMode.class,        packetId++, Side.SERVER);
         INSTANCE.registerMessage(PacketSetPartMode.Handler.class,             PacketSetPartMode.class,             packetId++, Side.SERVER);
+        INSTANCE.registerMessage(PacketRequestPresetList.Handler.class,       PacketRequestPresetList.class,       packetId++, Side.SERVER);
+        INSTANCE.registerMessage(PacketPresetList.Handler.class,              PacketPresetList.class,              packetId++, Side.CLIENT);
+        INSTANCE.registerMessage(PacketSavePreset.Handler.class,              PacketSavePreset.class,              packetId++, Side.SERVER);
+        INSTANCE.registerMessage(PacketDeletePreset.Handler.class,            PacketDeletePreset.class,            packetId++, Side.SERVER);
     }
 
     // Helper method to sync inventory to all tracking players
