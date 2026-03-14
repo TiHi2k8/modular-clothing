@@ -34,14 +34,14 @@ public class ClothingContainer extends Container {
         this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 2, 102, 26, ClothingInventorySlot.LEFT_ARM, player, layerSupplier));
 
         // Right Leg
-        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 4, 138, 44, ClothingInventorySlot.RIGHT_LEG, player, layerSupplier));
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 4, 129, 44, ClothingInventorySlot.RIGHT_LEG, player, layerSupplier));
         // Left Leg
-        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 5, 102, 44, ClothingInventorySlot.LEFT_LEG, player, layerSupplier));
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 5, 111, 44, ClothingInventorySlot.LEFT_LEG, player, layerSupplier));
 
         // Right Foot
-        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 6, 138, 62, ClothingInventorySlot.RIGHT_FOOT, player, layerSupplier));
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 6, 129, 62, ClothingInventorySlot.RIGHT_FOOT, player, layerSupplier));
         // Left Foot
-        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 7, 102, 62, ClothingInventorySlot.LEFT_FOOT, player, layerSupplier));
+        this.addSlotToContainer(new ClothingInventorySlotHandler(clothingInventory, 7, 111, 62, ClothingInventorySlot.LEFT_FOOT, player, layerSupplier));
 
 
         // Player Inventory
