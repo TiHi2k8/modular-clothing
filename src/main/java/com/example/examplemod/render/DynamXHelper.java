@@ -4,6 +4,7 @@ import com.example.examplemod.capability.ClothingInventorySlot;
 import net.minecraft.client.model.ModelBase;
 import net.minecraft.client.model.ModelBiped;
 import net.minecraft.client.model.ModelRenderer;
+import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.entity.Entity;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
@@ -92,9 +93,10 @@ public class DynamXHelper {
      *         false — not a DynamX armor model, caller must call model.render()
      */
     public static boolean renderDynamXArmorPart(
-            ModelBiped model, ClothingInventorySlot slot,
+            ModelBiped model, ModelBiped defaultModel,
+            ClothingInventorySlot slot,
             boolean chestShowArms, boolean pantsLegsMode, boolean shoesFeetMode,
-            float scale,
+            float scale, float[] transform,
             Entity player, float limbSwing, float limbSwingAmount,
             float ageInTicks, float netHeadYaw, float headPitch) {
 
@@ -109,7 +111,15 @@ public class DynamXHelper {
             return false;
         }
 
+        // Ensure animations are updated since we don't call model.render()
+        model.setRotationAngles(limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, scale, player);
+
         try {
+            // Replicate ModelBiped.render() sneaking offset
+            if (player.isSneaking()) {
+                GlStateManager.translate(0.0F, 0.2F, 0.0F);
+            }
+
             ModelRenderer body = safeGet(fieldBody, model);
 
             Object armsArr = fieldArms.get(model);
@@ -134,83 +144,169 @@ public class DynamXHelper {
             ModelRenderer rightFoot = getElement(footArr, 0); // screen right
             ModelRenderer leftFoot  = getElement(footArr, 1); // screen left
 
-            // Save original showModel states
-            boolean savedBody      = body      != null && body.showModel;
-            boolean savedRightArm  = rightArm  != null && rightArm.showModel;
-            boolean savedLeftArm   = leftArm   != null && leftArm.showModel;
-            boolean savedRightLeg  = rightLeg  != null && rightLeg.showModel;
-            boolean savedLeftLeg   = leftLeg   != null && leftLeg.showModel;
-            boolean savedRightFoot = rightFoot != null && rightFoot.showModel;
-            boolean savedLeftFoot  = leftFoot  != null && leftFoot.showModel;
-
-            // Hide everything by default, then show only what belongs to this slot
-            if (body      != null) body.showModel      = false;
-            if (rightArm  != null) rightArm.showModel  = false;
-            if (leftArm   != null) leftArm.showModel   = false;
-            if (rightLeg  != null) rightLeg.showModel  = false;
-            if (leftLeg   != null) leftLeg.showModel   = false;
-            if (rightFoot != null) rightFoot.showModel = false;
-            if (leftFoot  != null) leftFoot.showModel  = false;
-
             switch (slot) {
                 case CHEST:
-                    if (body != null) body.showModel = true;
+                    renderPart(body, defaultModel.bipedBody, transform, scale, 0.0F, 0.0F, 0.0F);
                     if (chestShowArms) {
                         // Also show arms when chest arms mode is active
-                        if (rightArm != null) rightArm.showModel = true;
-                        if (leftArm  != null) leftArm.showModel  = true;
+                        // Arms need outward offset: Left(+X), Right(-X)
+                        // arms[0] (Right Slot/Player Left) -> +X
+                        // arms[1] (Left Slot/Player Right) -> -X
+                        renderPart(rightArm, defaultModel.bipedLeftArm, transform, scale, 0.03F, 0.01F, 0.0F);
+                        renderPart(leftArm,  defaultModel.bipedRightArm, transform, scale, -0.03F, 0.01F, 0.0F);
                     }
                     break;
                 case RIGHT_ARM:
-                    if (rightArm != null) rightArm.showModel = true;
+                    renderPart(rightArm, defaultModel.bipedLeftArm, transform, scale, 0.03F, 0.01F, 0.0F);
                     break;
                 case LEFT_ARM:
-                    if (leftArm != null) leftArm.showModel = true;
+                    renderPart(leftArm, defaultModel.bipedRightArm, transform, scale, -0.03F, 0.01F, 0.0F);
                     break;
                 case RIGHT_LEG:
                     // Only render if pantsLegsMode is TRUE (covering both legs) OR this is the separate Right Slot
-                    if (rightLeg != null) rightLeg.showModel = true;
+                    renderPart(rightLeg, defaultModel.bipedLeftLeg, transform, scale, 0.0F, 0.0F, 0.0F);
                     if (pantsLegsMode) {
-                        if (leftLeg != null) leftLeg.showModel = true;
-                        if (body != null) body.showModel = true; // Pants usually cover pelvis
+                        renderPart(leftLeg, defaultModel.bipedRightLeg, transform, scale, 0.0F, 0.0F, 0.0F);
+                        renderPart(body, defaultModel.bipedBody, transform, scale, 0.0F, 0.0F, 0.0F);
                     }
                     break;
                 case LEFT_LEG:
                     // Render ONLY if separate mode
-                    if (!pantsLegsMode && leftLeg != null) {
-                        leftLeg.showModel = true;
+                    if (!pantsLegsMode) {
+                        renderPart(leftLeg, defaultModel.bipedRightLeg, transform, scale, 0.0F, 0.0F, 0.0F);
                     }
                     break;
                 case RIGHT_FOOT:
-                    if (rightFoot != null) rightFoot.showModel = true;
+                    // Shoes: 0.06 -> 0.045
+                    // 0.0150 further up
+                    renderPart(rightFoot, defaultModel.bipedLeftLeg, transform, scale, 0.005F, 0.045F, 0.0F);
                     if (shoesFeetMode) {
-                        if (leftFoot != null) leftFoot.showModel = true;
+                        renderPart(leftFoot, defaultModel.bipedRightLeg, transform, scale, -0.005F, 0.045F, 0.0F);
                     }
                     break;
                 case LEFT_FOOT:
-                     if (!shoesFeetMode && leftFoot != null) {
-                        leftFoot.showModel = true;
+                     if (!shoesFeetMode) {
+                        renderPart(leftFoot, defaultModel.bipedRightLeg, transform, scale, -0.005F, 0.045F, 0.0F);
                     }
                     break;
                 default:
                     break;
             }
 
-            model.render(player, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, scale);
-
-            // Restore
-            if (body      != null) body.showModel      = savedBody;
-            if (rightArm  != null) rightArm.showModel  = savedRightArm;
-            if (leftArm   != null) leftArm.showModel   = savedLeftArm;
-            if (rightLeg  != null) rightLeg.showModel  = savedRightLeg;
-            if (leftLeg   != null) leftLeg.showModel   = savedLeftLeg;
-            if (rightFoot != null) rightFoot.showModel = savedRightFoot;
-            if (leftFoot  != null) leftFoot.showModel  = savedLeftFoot;
-
             return true;
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private static void renderPart(ModelRenderer part, ModelRenderer targetPart, float[] transform, float scale, float adX, float adY, float adZ) {
+        if (part == null || !part.showModel || part.isHidden) return;
+        
+        // Transform: {scaleX, scaleY, scaleZ, offX, offY, offZ}
+        float scaleX = transform[0];
+        float scaleY = transform[1];
+        float scaleZ = transform[2];
+        float ox     = transform[3] + adX;
+        float oy     = transform[4] + adY;
+        float oz     = transform[5] + adZ;
+
+        // Target Pivot (Standard ModelBiped limb pivot)
+        float tx = (targetPart != null ? targetPart.rotationPointX : part.rotationPointX);
+        float ty = (targetPart != null ? targetPart.rotationPointY : part.rotationPointY);
+        float tz = (targetPart != null ? targetPart.rotationPointZ : part.rotationPointZ);
+
+        // Difference between Target and Actual Part pivot
+        float dx = tx - part.rotationPointX;
+        float dy = ty - part.rotationPointY;
+        float dz = tz - part.rotationPointZ;
+
+        GlStateManager.pushMatrix();
+
+        // 1. Move to the Pivot Point (The Joint)
+        //    This establishes the center of rotation and scaling.
+        GlStateManager.translate(tx * scale, ty * scale, tz * scale);
+
+        // 2. Apply Rotation (Standard ModelRenderer angles)
+        //    Use rotation from the target part (Vanilla Biped) if available, to ensure
+        //    the clothing follows the player's actual animation state perfectly.
+        float rx = (targetPart != null ? targetPart.rotateAngleX : part.rotateAngleX);
+        float ry = (targetPart != null ? targetPart.rotateAngleY : part.rotateAngleY);
+        float rz = (targetPart != null ? targetPart.rotateAngleZ : part.rotateAngleZ);
+
+        if (rz != 0.0F) GlStateManager.rotate(rz * (180F / (float)Math.PI), 0.0F, 0.0F, 1.0F);
+        if (ry != 0.0F) GlStateManager.rotate(ry * (180F / (float)Math.PI), 0.0F, 1.0F, 0.0F);
+        if (rx != 0.0F) GlStateManager.rotate(rx * (180F / (float)Math.PI), 1.0F, 0.0F, 0.0F);
+
+        // 3. Apply User Transforms (Offset & Scale)
+        //    These are relative to the joint/bone.
+        if (ox != 0.0f || oy != 0.0f || oz != 0.0f) {
+             GlStateManager.translate(ox, oy, oz);
+        }
+        if (scaleX != 1.0f || scaleY != 1.0f || scaleZ != 1.0f) {
+            GlStateManager.scale(scaleX, scaleY, scaleZ);
+        }
+
+        // 4. Move Back to the Geometry Origin
+        //    We want to render the part such that its own pivot (rotationPoint) aligns with the Target pivot.
+        //    Coordinates:
+        //      Current Matrix Origin (0,0,0) is at the Joint (Tx, Ty, Tz).
+        //      The Part mesh is defined relative to the Part Pivot (Px, Py, Pz).
+        //      To align Part Pivot to Matrix Origin, we must translate by -PartPivot.
+        //      (If Part Pivot is (0,0,0), this is identity).
+        //      (If Part Pivot is (5,0,0), and mesh is at (5,0,0), then mesh relative to pivot is (0,0,0).
+        //       Translate(-5) puts the cursor at (0,0,0) relative to mesh. Correct).
+
+        float px = part.rotationPointX;
+        float py = part.rotationPointY;
+        float pz = part.rotationPointZ;
+
+        if (px != 0.0f || py != 0.0f || pz != 0.0f) {
+             GlStateManager.translate(-px * scale, -py * scale, -pz * scale);
+        }
+
+        // 5. Render Part
+        //    We zero out the part's own transforms because we manually constructed the stack above.
+        //    modelRenderer.render(scale) basically translates to rotationPoint, rotates, then draws display list.
+        //    Since we set rotationPoint/Angle to 0, it just draws the display list at (0,0,0) of current matrix.
+        //    Wait! We need to undo the 'translate(part.rotationPointX...)' that render() normally does?
+        //    render() does: translate(rotationPoint); define box relative to it.
+        //    If we zero rotationPoint, it translates(0).
+        //    But we assumed in Step 4 that we wanted to be at Part.rotationPoint.
+        //    Wait, ModelRenderer.render() logic:
+        //      translate(this.rotationPointX * scale, ...);
+        //      ...
+        //      callDisplayList();
+        //    The display list assumes origin is at the rotation point.
+        //    So if we zero rotationPoint, render() calls display list at Current Position.
+        //    Step 4 left us at 'Part' (Rotated).
+        //    So calling display list here renders the box at Part.
+        //    This is CORRECT.
+
+        float savedX = part.rotationPointX;
+        float savedY = part.rotationPointY;
+        float savedZ = part.rotationPointZ;
+        float savedRotX = part.rotateAngleX;
+        float savedRotY = part.rotateAngleY;
+        float savedRotZ = part.rotateAngleZ;
+
+        part.rotationPointX = 0;
+        part.rotationPointY = 0;
+        part.rotationPointZ = 0;
+        part.rotateAngleX = 0;
+        part.rotateAngleY = 0;
+        part.rotateAngleZ = 0;
+        
+        part.render(scale);
+
+        // Restore
+        part.rotationPointX = savedX;
+        part.rotationPointY = savedY;
+        part.rotationPointZ = savedZ;
+        part.rotateAngleX = savedRotX;
+        part.rotateAngleY = savedRotY;
+        part.rotateAngleZ = savedRotZ;
+
+        GlStateManager.popMatrix();
     }
 
     private static ModelRenderer safeGet(Field f, Object obj) {
