@@ -38,117 +38,117 @@ public class ClothingRenderLayer implements LayerRenderer<AbstractClientPlayer> 
             if (stack.isEmpty()) continue;
 
             Item item = stack.getItem();
-            // Check if item is valid armor for the slot (or generally valid armor)
-            // We use the slot's target vanilla slot for checking validity and model retrieval
             ClothingInventorySlot slotType = ClothingInventorySlot.fromIndex(i % 8);
             EntityEquipmentSlot vanillaSlot = slotType.getVanillaSlot();
 
-            // if (!item.isValidArmor(stack, vanillaSlot, player)) continue;
-
             // Select default model
             ModelBiped defaultModel = vanillaSlot == EntityEquipmentSlot.LEGS ? this.modelLeggings : this.modelArmor;
-
-            // Get model with hook
             ModelBiped model = item.getArmorModel(player, stack, vanillaSlot, defaultModel);
-
-            // If mod returns null, use default
-            if (model == null) {
-                model = defaultModel;
-            }
+            if (model == null) model = defaultModel;
 
             java.util.Map<net.minecraft.client.model.ModelRenderer, Boolean> backupState = null;
 
             try {
-                // Sync attributes — this copies showModel flags from the main player model,
-                // so it must come before our custom visibility setup
                 model.setModelAttributes(this.renderer.getMainModel());
                 model.setLivingAnimations(player, limbSwing, limbSwingAmount, partialTicks);
 
                 // Hide all standard biped parts
-                model.bipedHead.showModel = false;
-                model.bipedHeadwear.showModel = false;
-                model.bipedBody.showModel = false;
-                model.bipedRightArm.showModel = false;
-                model.bipedLeftArm.showModel = false;
-                model.bipedRightLeg.showModel = false;
-                model.bipedLeftLeg.showModel = false;
+                model.bipedHead.showModel      = false;
+                model.bipedHeadwear.showModel  = false;
+                model.bipedBody.showModel      = false;
+                model.bipedRightArm.showModel  = false;
+                model.bipedLeftArm.showModel   = false;
+                model.bipedRightLeg.showModel  = false;
+                model.bipedLeftLeg.showModel   = false;
 
-                // Show only the standard biped part matching this slot.
+                int layerIndex = i / 8;
+                int slotIndex  = i % 8;
+
+                boolean chestArmsMode = (slotType == ClothingInventorySlot.CHEST)
+                        && inventory.getChestArmsMode(layerIndex);
+
+                // Show only the standard biped part(s) matching this slot.
                 // Mirroring: from the camera's view, bipedLeftArm/Leg appears on screen RIGHT
                 // and bipedRightArm/Leg appears on screen LEFT. So RIGHT_* slots use the Left
                 // biped field and LEFT_* slots use the Right biped field.
                 switch (slotType) {
                     case HEAD:
-                        model.bipedHead.showModel = true;
+                        model.bipedHead.showModel     = true;
                         model.bipedHeadwear.showModel = true;
                         break;
                     case CHEST:
-                        // Body only — arms are in dedicated slots
                         model.bipedBody.showModel = true;
+                        if (chestArmsMode) {
+                            model.bipedLeftArm.showModel  = true; // screen right
+                            model.bipedRightArm.showModel = true; // screen left
+                        }
                         break;
                     case RIGHT_ARM:
-                        model.bipedLeftArm.showModel = true;  // screen right = player's left
+                        model.bipedLeftArm.showModel  = true; // screen right = player's left
                         break;
                     case LEFT_ARM:
                         model.bipedRightArm.showModel = true; // screen left = player's right
                         break;
                     case RIGHT_LEG:
-                        model.bipedLeftLeg.showModel = true;  // screen right = player's left
+                        model.bipedLeftLeg.showModel  = true; // screen right = player's left
                         break;
                     case LEFT_LEG:
                         model.bipedRightLeg.showModel = true; // screen left = player's right
                         break;
                     case RIGHT_FOOT:
-                        model.bipedLeftLeg.showModel = true;  // screen right = player's left
+                        model.bipedLeftLeg.showModel  = true; // screen right = player's left
                         break;
                     case LEFT_FOOT:
                         model.bipedRightLeg.showModel = true; // screen left = player's right
                         break;
                 }
 
-                // DynamX/OBJ custom model support: run AFTER standard biped setup so it is
-                // the final word on custom field visibility (setModelAttributes would have
-                // overwritten an earlier DynamXHelper call for standard fields)
+                // DynamX/OBJ custom model support — run after standard biped setup
                 backupState = DynamXHelper.updateDynamXModel(model, slotType);
 
-                // Render
-                // Note: type is null for base texture
-                String texturePath = item.getArmorTexture(stack, player, vanillaSlot, null);
-                if (texturePath == null) {
-                    // Fallback to standard texture path if null
-                     if (item instanceof ItemArmor) {
+                // Determine texture and render
+                boolean isDynamX = DynamXHelper.isDynamXModel(model);
+
+                // DynamX models manage their own textures via the scene graph.
+                // For all other models, we need to look up and bind a texture.
+                String texturePath = null;
+                if (!isDynamX) {
+                    texturePath = item.getArmorTexture(stack, player, vanillaSlot, null);
+                    if (texturePath == null && item instanceof ItemArmor) {
                         ItemArmor armorItem = (ItemArmor) item;
-                        texturePath = String.format("%s:textures/models/armor/%s_layer_%d.png",
-                            getModId(item), armorItem.getArmorMaterial().getName(), (vanillaSlot == EntityEquipmentSlot.LEGS ? 2 : 1));
+                        String matName = armorItem.getArmorMaterial().getName();
+                        if (!matName.isEmpty()) {
+                            texturePath = String.format("%s:textures/models/armor/%s_layer_%d.png",
+                                    getModId(item), matName, (vanillaSlot == EntityEquipmentSlot.LEGS ? 2 : 1));
+                        }
                     }
                 }
 
-                if (texturePath != null) {
-                    this.renderer.bindTexture(new ResourceLocation(texturePath));
-                    int layerIndex = i / 8;
-                    int slotIndex  = i % 8;
+                if (texturePath != null || isDynamX) {
+                    if (texturePath != null) {
+                        this.renderer.bindTexture(new ResourceLocation(texturePath));
+                    }
 
-                    // Task 3: apply per-slot custom transform (scale + XYZ offsets)
+                    // Apply per-slot transform: float[6] = {scaleX, scaleY, scaleZ, offsetX, offsetY, offsetZ}
                     float[] transform = inventory.getSlotTransform(layerIndex, slotIndex);
-                    float customScale = transform[0];
-                    float ox = transform[1];
-                    float oy = transform[2];
-                    float oz = transform[3];
+                    float scaleX = transform[0];
+                    float scaleY = transform[1];
+                    float scaleZ = transform[2];
+                    float ox     = transform[3];
+                    float oy     = transform[4];
+                    float oz     = transform[5];
 
                     GlStateManager.pushMatrix();
                     if (ox != 0.0f || oy != 0.0f || oz != 0.0f) {
                         GlStateManager.translate(ox, oy, oz);
                     }
-                    if (customScale != 1.0f) {
-                        GlStateManager.scale(customScale, customScale, customScale);
+                    if (scaleX != 1.0f || scaleY != 1.0f || scaleZ != 1.0f) {
+                        GlStateManager.scale(scaleX, scaleY, scaleZ);
                     }
                     GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-                    // For DynamX ModelObjArmor: hide the ArmorRenderer parts that don't belong
-                    // to this slot (they check showModel in their own render() override), then
-                    // call model.render() normally so the scene-graph / Matrix4f path runs with
-                    // the live animation already set by setModelAttributes(mainModel).
+
                     boolean handledByDynamX = DynamXHelper.renderDynamXArmorPart(
-                            model, slotType, scale,
+                            model, slotType, chestArmsMode, scale,
                             player, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
                     if (!handledByDynamX) {
                         model.render(player, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, scale);
@@ -156,16 +156,13 @@ public class ClothingRenderLayer implements LayerRenderer<AbstractClientPlayer> 
                     GlStateManager.popMatrix();
                 }
             } catch (Exception e) {
-                // Log exception safely
                 System.err.println("Error rendering clothing layer: " + e.getMessage());
             } finally {
-                // Restore model state to avoid affecting other renderings of the same item
                 DynamXHelper.restoreDynamXModel(backupState);
             }
         }
     }
 
-    // Helper to get mod id
     private String getModId(Item item) {
         ResourceLocation reg = item.getRegistryName();
         return reg != null ? reg.getResourceDomain() : "minecraft";

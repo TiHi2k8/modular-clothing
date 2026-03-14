@@ -75,16 +75,22 @@ public class DynamXHelper {
         }
     }
 
+    /** Returns true if this model is a DynamX ModelObjArmor (manages its own textures). */
+    public static boolean isDynamXModel(ModelBiped model) {
+        return model != null && model.getClass().getName().equals(MODEL_OBJ_ARMOR_CLASS);
+    }
+
     /**
      * If the model is a DynamX {@code ModelObjArmor}, hides the ArmorRenderer
      * parts that do not belong to {@code slot}, then calls {@code model.render()}
      * (the scene-graph path), then restores visibility.
      *
+     * @param chestShowArms when slot==CHEST and true, also render arms alongside body
      * @return true  — model was handled, caller must NOT call model.render() again
      *         false — not a DynamX armor model, caller must call model.render()
      */
     public static boolean renderDynamXArmorPart(
-            ModelBiped model, ClothingInventorySlot slot, float scale,
+            ModelBiped model, ClothingInventorySlot slot, boolean chestShowArms, float scale,
             Entity player, float limbSwing, float limbSwingAmount,
             float ageInTicks, float netHeadYaw, float headPitch) {
 
@@ -144,8 +150,12 @@ public class DynamXHelper {
 
             switch (slot) {
                 case CHEST:
-                    // Body only — arms are deliberately hidden
                     if (body != null) body.showModel = true;
+                    if (chestShowArms) {
+                        // Also show arms when chest arms mode is active
+                        if (rightArm != null) rightArm.showModel = true;
+                        if (leftArm  != null) leftArm.showModel  = true;
+                    }
                     break;
                 case RIGHT_ARM:
                     if (rightArm != null) rightArm.showModel = true;

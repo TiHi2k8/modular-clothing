@@ -15,26 +15,43 @@ import java.io.IOException;
 
 /**
  * Sub-screen opened by right-clicking a clothing slot in ClothingGui.
- * Lets the player set per-slot Scale and XYZ position offsets.
+ * Lets the player set per-slot Scale (uniform or per-axis X/Y/Z) and XYZ position offsets.
  * The player preview updates live as values are typed.
  * "Apply" sends PacketUpdateClothingTransform; "Cancel" / Escape restores the original values.
+ * "Reset" resets all fields to defaults (scale=1, offsets=0).
+ * The toggle button next to "Scale" switches between uniform scale and per-axis X/Y/Z scale.
  */
 @SideOnly(Side.CLIENT)
 public class GuiClothingTransform extends GuiScreen {
 
-    private static final int BTN_APPLY  = 0;
-    private static final int BTN_CANCEL = 1;
+    private static final int BTN_APPLY        = 0;
+    private static final int BTN_CANCEL       = 1;
+    private static final int BTN_RESET        = 2;
+    private static final int BTN_SCALE_TOGGLE = 3;
 
     private final ClothingGui parent;
     private final int slotIndex;
     private final int layer;
 
-    private GuiTextField fieldScale;
-    private GuiTextField fieldOffsetX;
-    private GuiTextField fieldOffsetY;
-    private GuiTextField fieldOffsetZ;
+    // Text fields — scaleY/Z are null in uniform mode
+    private GuiTextField fieldScaleX;
+    private GuiTextField fieldScaleY;
+    private GuiTextField fieldScaleZ;
+    private GuiTextField fieldOffX;
+    private GuiTextField fieldOffY;
+    private GuiTextField fieldOffZ;
 
     private String errorMessage = "";
+
+    // Per-axis mode toggle (persists across initGui() reinit when toggling)
+    private boolean perAxisMode = false;
+
+    // Whether initGui has run at least once (for preserving field values on reinit)
+    private boolean initialized = false;
+
+    // Cached field texts — survive initGui() reinit when toggling modes
+    private String cScaleX = "1.0000", cScaleY = "1.0000", cScaleZ = "1.0000";
+    private String cOffX   = "0.0000", cOffY   = "0.0000", cOffZ   = "0.0000";
 
     /** Saved on open so Cancel / Escape can undo any live-preview changes. */
     private float[] originalTransform;
@@ -47,103 +64,180 @@ public class GuiClothingTransform extends GuiScreen {
 
     @Override
     public void initGui() {
-        float[] transform = readCurrentTransform();
-        originalTransform = transform.clone();
+        // Save current field values before wiping (only if already initialized)
+        if (initialized) {
+            saveFieldValues();
+        }
 
-        int cx = this.width / 2;
-        int startY = this.height / 2 - 70;
+        // First open: load from capability and save original
+        if (!initialized) {
+            float[] t = readCurrentTransform();
+            originalTransform = t.clone();
+            cScaleX = String.format("%.4f", t[0]);
+            cScaleY = String.format("%.4f", t[1]);
+            cScaleZ = String.format("%.4f", t[2]);
+            cOffX   = String.format("%.4f", t[3]);
+            cOffY   = String.format("%.4f", t[4]);
+            cOffZ   = String.format("%.4f", t[5]);
+            initialized = true;
+        }
 
-        // Shift fields right to leave room for player preview on the left
-        int fx = cx + 20;
-        fieldScale   = makeField(0, fx, startY,       String.format("%.4f", transform[0]));
-        fieldOffsetX = makeField(1, fx, startY + 30,  String.format("%.4f", transform[1]));
-        fieldOffsetY = makeField(2, fx, startY + 60,  String.format("%.4f", transform[2]));
-        fieldOffsetZ = makeField(3, fx, startY + 90,  String.format("%.4f", transform[3]));
-
-        fieldScale.setFocused(true);
-
-        this.buttonList.add(new GuiButton(BTN_APPLY,  fx - 35, startY + 120, 50, 20, "Apply"));
-        this.buttonList.add(new GuiButton(BTN_CANCEL, fx + 25, startY + 120, 50, 20, "Cancel"));
+        super.initGui();
+        buildLayout();
     }
 
-    private GuiTextField makeField(int id, int cx, int y, String defaultText) {
-        GuiTextField field = new GuiTextField(id, this.fontRenderer, cx - 40, y, 90, 20);
+    private void saveFieldValues() {
+        if (fieldScaleX != null) cScaleX = fieldScaleX.getText();
+        if (fieldScaleY != null) cScaleY = fieldScaleY.getText();
+        if (fieldScaleZ != null) cScaleZ = fieldScaleZ.getText();
+        if (fieldOffX   != null) cOffX   = fieldOffX.getText();
+        if (fieldOffY   != null) cOffY   = fieldOffY.getText();
+        if (fieldOffZ   != null) cOffZ   = fieldOffZ.getText();
+    }
+
+    /**
+     * Builds buttons and text fields for the current mode.
+     * Called from initGui() on first open and from the toggle handler on mode switch.
+     * Does NOT call super.initGui() — avoids the ConcurrentModificationException that
+     * would occur if the buttonList is cleared while Forge's action-performed loop is
+     * still iterating it.
+     */
+    private void buildLayout() {
+        int cx     = this.width / 2;
+        int startY = this.height / 2 - 70;
+        int fx     = cx + 20; // field center-X (fields are 90px wide, centered here)
+
+        // Toggle button above the scale field
+        this.buttonList.add(new GuiButton(BTN_SCALE_TOGGLE,
+                fx - 45, startY - 17, 90, 14,
+                perAxisMode ? "Scale: All" : "Scale: XYZ"));
+
+        if (!perAxisMode) {
+            // Uniform scale: one scale field + three offset fields
+            fieldScaleX = makeField(0, fx, startY,      cScaleX);
+            fieldScaleY = null;
+            fieldScaleZ = null;
+            fieldOffX   = makeField(3, fx, startY + 30, cOffX);
+            fieldOffY   = makeField(4, fx, startY + 60, cOffY);
+            fieldOffZ   = makeField(5, fx, startY + 90, cOffZ);
+            fieldScaleX.setFocused(true);
+
+            int by = startY + 120;
+            this.buttonList.add(new GuiButton(BTN_APPLY,  fx - 45, by, 42, 20, "Apply"));
+            this.buttonList.add(new GuiButton(BTN_RESET,  fx +  2, by, 42, 20, "Reset"));
+            this.buttonList.add(new GuiButton(BTN_CANCEL, fx + 49, by, 42, 20, "Cancel"));
+        } else {
+            // Per-axis scale: three scale fields + three offset fields
+            fieldScaleX = makeField(0, fx, startY,       cScaleX);
+            fieldScaleY = makeField(1, fx, startY + 22,  cScaleY);
+            fieldScaleZ = makeField(2, fx, startY + 44,  cScaleZ);
+            fieldOffX   = makeField(3, fx, startY + 70,  cOffX);
+            fieldOffY   = makeField(4, fx, startY + 92,  cOffY);
+            fieldOffZ   = makeField(5, fx, startY + 114, cOffZ);
+            fieldScaleX.setFocused(true);
+
+            int by = startY + 138;
+            this.buttonList.add(new GuiButton(BTN_APPLY,  fx - 45, by, 42, 20, "Apply"));
+            this.buttonList.add(new GuiButton(BTN_RESET,  fx +  2, by, 42, 20, "Reset"));
+            this.buttonList.add(new GuiButton(BTN_CANCEL, fx + 49, by, 42, 20, "Cancel"));
+        }
+    }
+
+    private GuiTextField makeField(int id, int cx, int y, String text) {
+        GuiTextField field = new GuiTextField(id, this.fontRenderer, cx - 45, y, 90, 20);
         field.setMaxStringLength(16);
-        field.setText(defaultText);
+        field.setText(text);
         return field;
     }
 
     private float[] readCurrentTransform() {
         IClothingInventory inv = this.mc.player.getCapability(ClothingProvider.CLOTHING_CAPABILITY, null);
-        if (inv != null) {
-            return inv.getSlotTransform(layer, slotIndex);
-        }
-        return new float[]{1.0f, 0.0f, 0.0f, 0.0f};
+        if (inv != null) return inv.getSlotTransform(layer, slotIndex);
+        return new float[]{1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f};
     }
 
-    /**
-     * Parse current field values and push them into the local capability so the
-     * player preview reflects the current input without pressing Apply.
-     * Silently ignores unparseable text (the preview just stays at the last valid state).
-     */
+    /** Parse fields and push into local capability for live preview. Silently ignores bad input. */
     private void tryApplyLivePreview() {
         try {
-            float scale = Float.parseFloat(fieldScale.getText().trim());
-            float ox    = Float.parseFloat(fieldOffsetX.getText().trim());
-            float oy    = Float.parseFloat(fieldOffsetY.getText().trim());
-            float oz    = Float.parseFloat(fieldOffsetZ.getText().trim());
-            IClothingInventory localInv = this.mc.player.getCapability(ClothingProvider.CLOTHING_CAPABILITY, null);
-            if (localInv != null) {
-                localInv.setSlotTransform(layer, slotIndex, scale, ox, oy, oz);
-            }
-        } catch (NumberFormatException ignored) {
-            // Leave the preview at its last valid state
-        }
+            float sx = Float.parseFloat(fieldScaleX.getText().trim());
+            float sy = (perAxisMode && fieldScaleY != null) ? Float.parseFloat(fieldScaleY.getText().trim()) : sx;
+            float sz = (perAxisMode && fieldScaleZ != null) ? Float.parseFloat(fieldScaleZ.getText().trim()) : sx;
+            float ox = Float.parseFloat(fieldOffX.getText().trim());
+            float oy = Float.parseFloat(fieldOffY.getText().trim());
+            float oz = Float.parseFloat(fieldOffZ.getText().trim());
+            IClothingInventory inv = this.mc.player.getCapability(ClothingProvider.CLOTHING_CAPABILITY, null);
+            if (inv != null) inv.setSlotTransform(layer, slotIndex, sx, sy, sz, ox, oy, oz);
+        } catch (NumberFormatException ignored) {}
     }
 
     /** Write the saved original transform back to the local capability (Cancel / Escape). */
     private void restoreOriginalTransform() {
         if (originalTransform == null) return;
-        IClothingInventory localInv = this.mc.player.getCapability(ClothingProvider.CLOTHING_CAPABILITY, null);
-        if (localInv != null) {
-            localInv.setSlotTransform(layer, slotIndex,
-                    originalTransform[0], originalTransform[1],
-                    originalTransform[2], originalTransform[3]);
+        IClothingInventory inv = this.mc.player.getCapability(ClothingProvider.CLOTHING_CAPABILITY, null);
+        if (inv != null) {
+            inv.setSlotTransform(layer, slotIndex,
+                    originalTransform[0], originalTransform[1], originalTransform[2],
+                    originalTransform[3], originalTransform[4], originalTransform[5]);
         }
     }
 
     @Override
     protected void actionPerformed(GuiButton button) throws IOException {
+        if (button.id == BTN_SCALE_TOGGLE) {
+            saveFieldValues();
+            perAxisMode = !perAxisMode;
+            if (!perAxisMode) {
+                // Switching to uniform: sync Y/Z to X so no unexpected jump
+                cScaleY = cScaleX;
+                cScaleZ = cScaleX;
+            }
+            // Rebuild buttons/fields without calling super.initGui() to avoid
+            // ConcurrentModificationException from clearing buttonList mid-iteration.
+            this.buttonList.clear();
+            buildLayout();
+            return;
+        }
+
+        if (button.id == BTN_RESET) {
+            fieldScaleX.setText("1.0000");
+            if (fieldScaleY != null) fieldScaleY.setText("1.0000");
+            if (fieldScaleZ != null) fieldScaleZ.setText("1.0000");
+            fieldOffX.setText("0.0000");
+            fieldOffY.setText("0.0000");
+            fieldOffZ.setText("0.0000");
+            return;
+        }
+
         if (button.id == BTN_APPLY) {
             try {
-                float scale = Float.parseFloat(fieldScale.getText().trim());
-                float ox    = Float.parseFloat(fieldOffsetX.getText().trim());
-                float oy    = Float.parseFloat(fieldOffsetY.getText().trim());
-                float oz    = Float.parseFloat(fieldOffsetZ.getText().trim());
+                float sx = Float.parseFloat(fieldScaleX.getText().trim());
+                float sy = (perAxisMode && fieldScaleY != null) ? Float.parseFloat(fieldScaleY.getText().trim()) : sx;
+                float sz = (perAxisMode && fieldScaleZ != null) ? Float.parseFloat(fieldScaleZ.getText().trim()) : sx;
+                float ox = Float.parseFloat(fieldOffX.getText().trim());
+                float oy = Float.parseFloat(fieldOffY.getText().trim());
+                float oz = Float.parseFloat(fieldOffZ.getText().trim());
                 errorMessage = "";
-                // Local capability already updated by live preview; just sync to server
                 ClothingNetworkHandler.INSTANCE.sendToServer(
-                        new PacketUpdateClothingTransform(layer, slotIndex, scale, ox, oy, oz));
+                        new PacketUpdateClothingTransform(layer, slotIndex, sx, sy, sz, ox, oy, oz));
                 this.mc.displayGuiScreen(parent);
-                return;
             } catch (NumberFormatException e) {
                 errorMessage = "Invalid number — use decimal format (e.g. 1.0)";
-                return;
             }
+            return;
         }
-        // Cancel — undo live-preview changes and go back
+
+        // BTN_CANCEL
         restoreOriginalTransform();
         this.mc.displayGuiScreen(parent);
     }
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
-        // Push live-preview transform into local capability every frame
         tryApplyLivePreview();
 
         this.drawDefaultBackground();
 
-        int cx = this.width / 2;
+        int cx     = this.width / 2;
         int startY = this.height / 2 - 70;
 
         // Player preview on the left side
@@ -155,24 +249,39 @@ public class GuiClothingTransform extends GuiScreen {
                 this.mc.player);
 
         // Panel title
-        String title = "Clothing Transform  (Slot " + (slotIndex + 1) + ", Layer " + (layer + 1) + ")";
-        this.fontRenderer.drawStringWithShadow(title, cx - this.fontRenderer.getStringWidth(title) / 2, startY - 22, 0xFFFFFF);
+        String title = "Transform  (Slot " + (slotIndex + 1) + ", Layer " + (layer + 1) + ")";
+        this.fontRenderer.drawStringWithShadow(title,
+                cx - this.fontRenderer.getStringWidth(title) / 2, startY - 30, 0xFFFFFF);
 
-        // Labels (shifted right to make room for preview)
-        this.fontRenderer.drawStringWithShadow("Scale:",    cx - 30, startY +  5, 0xAAAAAA);
-        this.fontRenderer.drawStringWithShadow("X Offset:", cx - 30, startY + 35, 0xAAAAAA);
-        this.fontRenderer.drawStringWithShadow("Y Offset:", cx - 30, startY + 65, 0xAAAAAA);
-        this.fontRenderer.drawStringWithShadow("Z Offset:", cx - 30, startY + 95, 0xAAAAAA);
-
-        // Error
-        if (!errorMessage.isEmpty()) {
-            this.fontRenderer.drawStringWithShadow(errorMessage, cx - this.fontRenderer.getStringWidth(errorMessage) / 2, startY + 148, 0xFF5555);
+        // Labels
+        if (!perAxisMode) {
+            this.fontRenderer.drawStringWithShadow("Scale:",    cx - 30, startY +  5, 0xAAAAAA);
+            this.fontRenderer.drawStringWithShadow("X Offset:", cx - 30, startY + 35, 0xAAAAAA);
+            this.fontRenderer.drawStringWithShadow("Y Offset:", cx - 30, startY + 65, 0xAAAAAA);
+            this.fontRenderer.drawStringWithShadow("Z Offset:", cx - 30, startY + 95, 0xAAAAAA);
+        } else {
+            this.fontRenderer.drawStringWithShadow("Scale X:",  cx - 30, startY +  5, 0xAAAAAA);
+            this.fontRenderer.drawStringWithShadow("Scale Y:",  cx - 30, startY + 27, 0xAAAAAA);
+            this.fontRenderer.drawStringWithShadow("Scale Z:",  cx - 30, startY + 49, 0xAAAAAA);
+            this.fontRenderer.drawStringWithShadow("X Offset:", cx - 30, startY + 75, 0xAAAAAA);
+            this.fontRenderer.drawStringWithShadow("Y Offset:", cx - 30, startY + 97, 0xAAAAAA);
+            this.fontRenderer.drawStringWithShadow("Z Offset:", cx - 30, startY + 119, 0xAAAAAA);
         }
 
-        fieldScale.drawTextBox();
-        fieldOffsetX.drawTextBox();
-        fieldOffsetY.drawTextBox();
-        fieldOffsetZ.drawTextBox();
+        // Error message
+        if (!errorMessage.isEmpty()) {
+            this.fontRenderer.drawStringWithShadow(errorMessage,
+                    cx - this.fontRenderer.getStringWidth(errorMessage) / 2,
+                    startY + (perAxisMode ? 162 : 148), 0xFF5555);
+        }
+
+        // Draw active fields
+        fieldScaleX.drawTextBox();
+        if (perAxisMode && fieldScaleY != null) fieldScaleY.drawTextBox();
+        if (perAxisMode && fieldScaleZ != null) fieldScaleZ.drawTextBox();
+        fieldOffX.drawTextBox();
+        fieldOffY.drawTextBox();
+        fieldOffZ.drawTextBox();
 
         super.drawScreen(mouseX, mouseY, partialTicks);
     }
@@ -184,19 +293,23 @@ public class GuiClothingTransform extends GuiScreen {
             this.mc.displayGuiScreen(parent);
             return;
         }
-        fieldScale.textboxKeyTyped(typedChar, keyCode);
-        fieldOffsetX.textboxKeyTyped(typedChar, keyCode);
-        fieldOffsetY.textboxKeyTyped(typedChar, keyCode);
-        fieldOffsetZ.textboxKeyTyped(typedChar, keyCode);
+        fieldScaleX.textboxKeyTyped(typedChar, keyCode);
+        if (perAxisMode && fieldScaleY != null) fieldScaleY.textboxKeyTyped(typedChar, keyCode);
+        if (perAxisMode && fieldScaleZ != null) fieldScaleZ.textboxKeyTyped(typedChar, keyCode);
+        fieldOffX.textboxKeyTyped(typedChar, keyCode);
+        fieldOffY.textboxKeyTyped(typedChar, keyCode);
+        fieldOffZ.textboxKeyTyped(typedChar, keyCode);
         super.keyTyped(typedChar, keyCode);
     }
 
     @Override
     protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
-        fieldScale.mouseClicked(mouseX, mouseY, mouseButton);
-        fieldOffsetX.mouseClicked(mouseX, mouseY, mouseButton);
-        fieldOffsetY.mouseClicked(mouseX, mouseY, mouseButton);
-        fieldOffsetZ.mouseClicked(mouseX, mouseY, mouseButton);
+        fieldScaleX.mouseClicked(mouseX, mouseY, mouseButton);
+        if (perAxisMode && fieldScaleY != null) fieldScaleY.mouseClicked(mouseX, mouseY, mouseButton);
+        if (perAxisMode && fieldScaleZ != null) fieldScaleZ.mouseClicked(mouseX, mouseY, mouseButton);
+        fieldOffX.mouseClicked(mouseX, mouseY, mouseButton);
+        fieldOffY.mouseClicked(mouseX, mouseY, mouseButton);
+        fieldOffZ.mouseClicked(mouseX, mouseY, mouseButton);
         super.mouseClicked(mouseX, mouseY, mouseButton);
     }
 

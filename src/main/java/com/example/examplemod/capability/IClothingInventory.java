@@ -17,9 +17,12 @@ public interface IClothingInventory extends INBTSerializable<NBTTagCompound> {
     ItemStack getStackInLayer(int layer, int slot);
     void setStackInLayer(int layer, int slot, ItemStack stack);
 
-    // Per-slot transform: float[4] = { scale, offsetX, offsetY, offsetZ }
-    // Defaults: scale=1.0, offsets=0.0
+    // Per-slot transform: float[6] = { scaleX, scaleY, scaleZ, offsetX, offsetY, offsetZ }
+    // Defaults: all scales=1.0, all offsets=0.0
     float[] getSlotTransform(int layer, int slot);
-    void setSlotTransform(int layer, int slot, float scale, float offsetX, float offsetY, float offsetZ);
-}
+    void setSlotTransform(int layer, int slot, float scaleX, float scaleY, float scaleZ, float offsetX, float offsetY, float offsetZ);
 
+    // CHEST slot: if true, the chest piece also renders both arms in addition to the body
+    boolean getChestArmsMode(int layer);
+    void setChestArmsMode(int layer, boolean showArms);
+}

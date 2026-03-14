@@ -10,22 +10,26 @@ import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
 
 /**
  * Client -> Server packet sent when the player confirms new transform values
- * (scale / XYZ offsets) for a specific clothing slot via GuiClothingTransform.
+ * (per-axis scale / XYZ offsets) for a specific clothing slot via GuiClothingTransform.
  */
 public class PacketUpdateClothingTransform implements IMessage {
     private int layer;
     private int slot;
-    private float scale;
+    private float scaleX;
+    private float scaleY;
+    private float scaleZ;
     private float offsetX;
     private float offsetY;
     private float offsetZ;
 
     public PacketUpdateClothingTransform() {}
 
-    public PacketUpdateClothingTransform(int layer, int slot, float scale, float offsetX, float offsetY, float offsetZ) {
+    public PacketUpdateClothingTransform(int layer, int slot, float scaleX, float scaleY, float scaleZ, float offsetX, float offsetY, float offsetZ) {
         this.layer   = layer;
         this.slot    = slot;
-        this.scale   = scale;
+        this.scaleX  = scaleX;
+        this.scaleY  = scaleY;
+        this.scaleZ  = scaleZ;
         this.offsetX = offsetX;
         this.offsetY = offsetY;
         this.offsetZ = offsetZ;
@@ -35,7 +39,9 @@ public class PacketUpdateClothingTransform implements IMessage {
     public void fromBytes(ByteBuf buf) {
         layer   = buf.readInt();
         slot    = buf.readInt();
-        scale   = buf.readFloat();
+        scaleX  = buf.readFloat();
+        scaleY  = buf.readFloat();
+        scaleZ  = buf.readFloat();
         offsetX = buf.readFloat();
         offsetY = buf.readFloat();
         offsetZ = buf.readFloat();
@@ -45,7 +51,9 @@ public class PacketUpdateClothingTransform implements IMessage {
     public void toBytes(ByteBuf buf) {
         buf.writeInt(layer);
         buf.writeInt(slot);
-        buf.writeFloat(scale);
+        buf.writeFloat(scaleX);
+        buf.writeFloat(scaleY);
+        buf.writeFloat(scaleZ);
         buf.writeFloat(offsetX);
         buf.writeFloat(offsetY);
         buf.writeFloat(offsetZ);
@@ -62,9 +70,9 @@ public class PacketUpdateClothingTransform implements IMessage {
                 if (message.slot  < 0 || message.slot  >= 8)                         return;
 
                 inventory.setSlotTransform(message.layer, message.slot,
-                        message.scale, message.offsetX, message.offsetY, message.offsetZ);
+                        message.scaleX, message.scaleY, message.scaleZ,
+                        message.offsetX, message.offsetY, message.offsetZ);
 
-                // Sync full inventory so the client's capability reflects the change
                 ClothingNetworkHandler.sendToAllTracking(new PacketSyncClothingInventory(player), player);
                 ClothingNetworkHandler.sendTo(new PacketSyncClothingInventory(player), player);
             });

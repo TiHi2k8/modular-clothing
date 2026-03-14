@@ -15,6 +15,7 @@ public class ClothingNetworkHandler {
         INSTANCE.registerMessage(PacketOpenClothingGUI.Handler.class,        PacketOpenClothingGUI.class,        packetId++, Side.SERVER);
         INSTANCE.registerMessage(PacketChangeClothingLayer.Handler.class,    PacketChangeClothingLayer.class,    packetId++, Side.SERVER);
         INSTANCE.registerMessage(PacketUpdateClothingTransform.Handler.class, PacketUpdateClothingTransform.class, packetId++, Side.SERVER);
+        INSTANCE.registerMessage(PacketSetChestArmsMode.Handler.class,        PacketSetChestArmsMode.class,        packetId++, Side.SERVER);
     }
 
     // Helper method to sync inventory to all tracking players
