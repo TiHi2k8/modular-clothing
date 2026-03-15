@@ -148,42 +148,45 @@ public class DynamXHelper {
             // We pass this offset to renderPart to adjust the pivot point Y.
             float sneakY = player.isSneaking() ? 0.2F : 0.0F;
             float leftArmSneak = player.isSneaking() ? -0.2F : 0.0F;
+            float rightArmSneak = player.isSneaking() ? -0.2F : 0.0F;
             float bodySneak = player.isSneaking() ? -0.4F : 0.0F;
-            float leftLegSneak = player.isSneaking() ? -0.6F : 0.0F;
-            float rightLegSneak = player.isSneaking() ? -0.8F : 0.0F;
+            float leftLegSneak = player.isSneaking() ? -0.21F : 0.0F;
+            float leftBothLegSneak = player.isSneaking() ? -0.011F : 0.0F;
+            float rightLegSneak = player.isSneaking() ? -0.007F : 0.0F;
             float leftFootSneak = player.isSneaking() ? -1.0F : 0.0F;
             float rightFootSneak = player.isSneaking() ? -1.2F : 0.0F;
 
             switch (slot) {
                 case CHEST:
-                    renderPart(body, defaultModel.bipedBody, transform, scale, 0.0F, 0.0F, 0.0F, bodySneak);
                     if (chestShowArms) {
-                        renderPart(rightArm, defaultModel.bipedLeftArm, transform, scale, 0.03F, 0.01F, 0.0F, 0.0F);
-                        renderPart(leftArm,  defaultModel.bipedRightArm, transform, scale, -0.03F, 0.01F, 0.0F, leftArmSneak);
+                        renderPart(rightArm, defaultModel.bipedLeftArm, transform, scale, 0.02F, 0.01F, 0.0F, 0.0F);
+                        renderPart(leftArm,  defaultModel.bipedRightArm, transform, scale, -0.02F, 0.01F, 0.0F, 0.0F);
+                        renderPart(body, defaultModel.bipedBody, transform, scale, 0.0F, 0.0F, 0.0F, 0.0F);
+                    } else {
+                        renderPart(body, defaultModel.bipedBody, transform, scale, 0.0F, 0.0F, 0.0F, bodySneak);
                     }
                     break;
                 case RIGHT_ARM:
-                    renderPart(rightArm, defaultModel.bipedLeftArm, transform, scale, 0.03F, 0.01F, 0.0F, 0.0F);
+                    renderPart(rightArm, defaultModel.bipedLeftArm, transform, scale, 0.02F, 0.01F, 0.0F, 0.0F);
                     break;
                 case LEFT_ARM:
-                    renderPart(leftArm, defaultModel.bipedRightArm, transform, scale, -0.03F, 0.01F, 0.0F, leftArmSneak);
+                    renderPart(leftArm, defaultModel.bipedRightArm, transform, scale, -0.02F, 0.01F, 0.0F, leftArmSneak);
                     break;
                 case RIGHT_LEG:
-                    renderPart(rightLeg, defaultModel.bipedLeftLeg, transform, scale, 0.0F, 0.0F, 0.0F, leftLegSneak);
+                    renderPart(rightLeg, defaultModel.bipedLeftLeg, transform, scale, 0.0F, 0.0475F, 0.0F, rightLegSneak);
                     if (pantsLegsMode) {
-                        renderPart(leftLeg, defaultModel.bipedRightLeg, transform, scale, 0.0F, 0.0F, 0.0F, rightLegSneak);
-                        renderPart(body, defaultModel.bipedBody, transform, scale, 0.0F, 0.0F, 0.0F, bodySneak);
+                        renderPart(leftLeg, defaultModel.bipedRightLeg, transform, scale, 0.0F, 0.05F, 0.0F, leftBothLegSneak);
                     }
                     break;
                 case LEFT_LEG:
                     if (!pantsLegsMode) {
-                        renderPart(leftLeg, defaultModel.bipedRightLeg, transform, scale, 0.0F, 0.0F, 0.0F, rightLegSneak);
+                        renderPart(leftLeg, defaultModel.bipedRightLeg, transform, scale, 0.0F, 0.0475F, 0.0F, leftLegSneak);
                     }
                     break;
                 case RIGHT_FOOT:
                     renderPart(rightFoot, defaultModel.bipedLeftLeg, transform, scale, 0.005F, 0.045F, 0.0F, leftFootSneak);
                     if (shoesFeetMode) {
-                        renderPart(leftFoot, defaultModel.bipedRightLeg, transform, scale, -0.005F, 0.045F, 0.0F, rightFootSneak);
+                        renderPart(leftFoot, defaultModel.bipedRightLeg, transform, scale, -0.005F, 0.09F, 0.0F, rightFootSneak);
                     }
                     break;
                 case LEFT_FOOT:
