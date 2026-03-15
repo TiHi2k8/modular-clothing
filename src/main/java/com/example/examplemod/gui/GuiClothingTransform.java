@@ -285,7 +285,7 @@ public class GuiClothingTransform extends GuiScreen {
         drawScaledCustomSizeModalRect(guiLeft, guiTop, 0, 0, 256, 256, xSize, ySize, 256, 256);
 
         int cx     = this.width / 2;
-        int startY = this.height / 2 - 65; // Match buildLayout for vertical alignment
+        int startY = this.height / 2 - 85; // Match buildLayout for vertical alignment
         int fx     = cx + 80; // Match buildLayout for horizontal alignment
 
         // Player preview on the left side

@@ -122,7 +122,7 @@ public class GuiClothingPresets extends GuiScreen {
 
         // Search field  (y+20 = title row, y+32 = field)
         // Moved everything left by subtracting from x
-        searchField = new GuiTextField(0, this.fontRenderer, x - 10, y + 32, panelW - 30, 16);
+        searchField = new GuiTextField(0, this.fontRenderer, x - 10, y + 17, panelW - 30, 16);
         searchField.setMaxStringLength(50);
         searchField.setFocused(true);
 
@@ -155,7 +155,7 @@ public class GuiClothingPresets extends GuiScreen {
     private void rebuildPresetButtons() {
         this.buttonList.removeIf(b -> b.id >= BTN_LOAD_BASE);
 
-        int rowY = panelTop + 52;
+        int rowY = panelTop + 37;
         int end  = Math.min(scrollOffset + VISIBLE_ROWS, filteredPresets.size());
         for (int i = scrollOffset; i < end; i++) {
             int ry = rowY + (i - scrollOffset) * ROW_H;
@@ -307,7 +307,7 @@ public class GuiClothingPresets extends GuiScreen {
         int xSize = 280; // Smaller size for presets
         int ySize = 280;
         int guiLeft = (this.width - xSize) / 2; // Centered again
-        int guiTop  = (this.height - ySize) / 2 + 10; // Moved up by 15 (from +25 to +10)
+        int guiTop  = (this.height - ySize) / 2 - 5; // Moved up by 15 (from +25 to +10)
         drawScaledCustomSizeModalRect(guiLeft, guiTop, 0, 0, 256, 256, xSize, ySize, 256, 256);
 
         int x      = panelLeft;
@@ -342,7 +342,7 @@ public class GuiClothingPresets extends GuiScreen {
                     x + panelW / 2 - this.fontRenderer.getStringWidth(txt) / 2,
                     y + 60, 0x404040);
         } else {
-            int rowY = y + 52;
+            int rowY = y + 37;
             int end  = Math.min(scrollOffset + VISIBLE_ROWS, filteredPresets.size());
             for (int i = scrollOffset; i < end; i++) {
                 int ry   = rowY + (i - scrollOffset) * ROW_H;
