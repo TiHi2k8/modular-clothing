@@ -8,6 +8,11 @@ import com.example.examplemod.preset.TransformPresetManager;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiTextField;
+import net.minecraft.client.renderer.BufferBuilder;
+import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
+import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
@@ -55,6 +60,8 @@ public class GuiClothingPresets extends GuiScreen {
     private static final int BTN_LOAD_BASE    = 100; // 100 + filteredIndex
     private static final int BTN_DELETE_BASE  = 200; // 200 + filteredIndex
 
+    private static final ResourceLocation BACKGROUND_TEXTURE = new ResourceLocation("examplemod", "textures/gui/tranform_gui.png");
+
     private final GuiClothingTransform parent;
 
     /** Current transform values + mode passed in from the transform screen. */
@@ -88,9 +95,9 @@ public class GuiClothingPresets extends GuiScreen {
     @Override
     public void initGui() {
         openInstance = this;
-        panelW    = 260;
-        panelLeft = this.width  / 2 - panelW / 2;
-        panelTop  = this.height / 2 - (VISIBLE_ROWS * ROW_H / 2) - 50;
+        panelW    = 230; // Reduced width
+        panelLeft = this.width / 2 - panelW / 2; // Centered again (removed +15)
+        panelTop  = this.height / 2 - (VISIBLE_ROWS * ROW_H / 2) - 25; // Moved down
 
         super.initGui();
         buildLayout();
@@ -114,7 +121,8 @@ public class GuiClothingPresets extends GuiScreen {
         int right  = x + panelW;
 
         // Search field  (y+20 = title row, y+32 = field)
-        searchField = new GuiTextField(0, this.fontRenderer, x + 5, y + 32, panelW - 10, 16);
+        // Moved everything left by subtracting from x
+        searchField = new GuiTextField(0, this.fontRenderer, x - 10, y + 32, panelW - 30, 16);
         searchField.setMaxStringLength(50);
         searchField.setFocused(true);
 
@@ -123,20 +131,21 @@ public class GuiClothingPresets extends GuiScreen {
 
         // Scroll buttons (right of panel)
         int midRow = y + 52 + (VISIBLE_ROWS * ROW_H) / 2 - ROW_H;
-        this.buttonList.add(new GuiButton(BTN_SCROLL_UP,   right + 4, midRow,       20, ROW_H - 2, "▲"));
-        this.buttonList.add(new GuiButton(BTN_SCROLL_DOWN, right + 4, midRow + ROW_H, 20, ROW_H - 2, "▼"));
+        // Moved left to fit new texture align
+        this.buttonList.add(new GuiButton(BTN_SCROLL_UP,   right - 25, midRow,       20, ROW_H - 2, "▲"));
+        this.buttonList.add(new GuiButton(BTN_SCROLL_DOWN, right - 25, midRow + ROW_H, 20, ROW_H - 2, "▼"));
 
         // Bottom bar
-        int bottomY = y + 52 + VISIBLE_ROWS * ROW_H + 6;
+        int bottomY = y + 52 + VISIBLE_ROWS * ROW_H + 16; // Moved down by 10 (+6 -> +16)
 
         if (!saveMode) {
-            this.buttonList.add(new GuiButton(BTN_SAVE_CURRENT, x + 5,          bottomY, 120, 20, "Save Current"));
-            this.buttonList.add(new GuiButton(BTN_CLOSE,        right - 125,     bottomY, 120, 20, "Close"));
+            this.buttonList.add(new GuiButton(BTN_SAVE_CURRENT, x - 10,         bottomY, 110, 20, "Save Current"));
+            this.buttonList.add(new GuiButton(BTN_CLOSE,        right - 55,     bottomY, 50, 20, "Close"));
         } else {
-            saveNameField = new GuiTextField(1, this.fontRenderer, x + 5, bottomY + 1, panelW - 120, 18);
+            saveNameField = new GuiTextField(1, this.fontRenderer, x - 10, bottomY + 1, panelW - 135, 18);
             saveNameField.setMaxStringLength(40);
             saveNameField.setFocused(true);
-            int bx = x + 5 + panelW - 115;
+            int bx = x - 10 + panelW - 130;
             this.buttonList.add(new GuiButton(BTN_CONFIRM_SAVE, bx,      bottomY, 55, 20, "Save"));
             this.buttonList.add(new GuiButton(BTN_CANCEL_SAVE,  bx + 58, bottomY, 57, 20, "Cancel"));
         }
@@ -150,8 +159,9 @@ public class GuiClothingPresets extends GuiScreen {
         int end  = Math.min(scrollOffset + VISIBLE_ROWS, filteredPresets.size());
         for (int i = scrollOffset; i < end; i++) {
             int ry = rowY + (i - scrollOffset) * ROW_H;
-            this.buttonList.add(new GuiButton(BTN_LOAD_BASE   + i, panelLeft + panelW - 100, ry, 46, ROW_H - 2, "Load"));
-            this.buttonList.add(new GuiButton(BTN_DELETE_BASE + i, panelLeft + panelW -  51, ry, 46, ROW_H - 2, "Delete"));
+            // Shifted list buttons left, reduced width
+            this.buttonList.add(new GuiButton(BTN_LOAD_BASE   + i, panelLeft + panelW - 145, ry, 40, ROW_H - 2, "Load"));
+            this.buttonList.add(new GuiButton(BTN_DELETE_BASE + i, panelLeft + panelW - 100, ry, 40, ROW_H - 2, "Delete"));
         }
     }
 
@@ -291,6 +301,14 @@ public class GuiClothingPresets extends GuiScreen {
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         this.drawDefaultBackground();
+        this.mc.getTextureManager().bindTexture(BACKGROUND_TEXTURE);
+        GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+
+        int xSize = 280; // Smaller size for presets
+        int ySize = 280;
+        int guiLeft = (this.width - xSize) / 2; // Centered again
+        int guiTop  = (this.height - ySize) / 2 + 25; // Moved down
+        drawScaledCustomSizeModalRect(guiLeft, guiTop, 0, 0, 256, 256, xSize, ySize, 256, 256);
 
         int x      = panelLeft;
         int y      = panelTop;
@@ -298,31 +316,31 @@ public class GuiClothingPresets extends GuiScreen {
         int bottom = y + 52 + VISIBLE_ROWS * ROW_H + 30;
 
         // Panel background
-        drawRect(x, y, right, bottom, 0xBB000000);
-        drawRect(x, y, right, y + 1,  0xFF555555); // top border
-        drawRect(x, y, x + 1, bottom, 0xFF555555); // left border
-        drawRect(right - 1, y, right, bottom, 0xFF555555); // right border
-        drawRect(x, bottom - 1, right, bottom, 0xFF555555); // bottom border
+        // drawRect(x, y, right, bottom, 0xBB000000); // Removed dark overlay
+        // drawRect(x, y, right, y + 1,  0xFF555555); // top border
+        // drawRect(x, y, x + 1, bottom, 0xFF555555); // left border
+        // drawRect(right - 1, y, right, bottom, 0xFF555555); // right border
+        // drawRect(x, bottom - 1, right, bottom, 0xFF555555); // bottom border
 
         // Title
         String title = "Transform Presets";
         int tw = this.fontRenderer.getStringWidth(title);
-        this.fontRenderer.drawStringWithShadow(title, x + panelW / 2 - tw / 2, y + 8, 0xFFFFFF);
+        this.fontRenderer.drawString(title, x + panelW / 2 - tw / 2, y + 8, 0x404040);
 
         // Search label
-        this.fontRenderer.drawStringWithShadow("Search:", x + 5, y + 20, 0xAAAAAA);
+        this.fontRenderer.drawString("Search:", x + 5, y + 20, 0x404040);
 
         // Content
         if (loading) {
             String txt = "Loading...";
-            this.fontRenderer.drawStringWithShadow(txt,
+            this.fontRenderer.drawString(txt,
                     x + panelW / 2 - this.fontRenderer.getStringWidth(txt) / 2,
-                    y + 60, 0x888888);
+                    y + 60, 0x404040);
         } else if (filteredPresets.isEmpty()) {
             String txt = allPresets.isEmpty() ? "No presets saved yet" : "No results";
-            this.fontRenderer.drawStringWithShadow(txt,
+            this.fontRenderer.drawString(txt,
                     x + panelW / 2 - this.fontRenderer.getStringWidth(txt) / 2,
-                    y + 60, 0x888888);
+                    y + 60, 0x404040);
         } else {
             int rowY = y + 52;
             int end  = Math.min(scrollOffset + VISIBLE_ROWS, filteredPresets.size());
@@ -330,14 +348,14 @@ public class GuiClothingPresets extends GuiScreen {
                 int ry   = rowY + (i - scrollOffset) * ROW_H;
                 String name = filteredPresets.get(i).name;
                 // Truncate name so it doesn't overlap Load button
-                int maxW = panelW - 110;
+                int maxW = panelW - 145;
                 if (this.fontRenderer.getStringWidth(name) > maxW) {
                     while (name.length() > 1 && this.fontRenderer.getStringWidth(name + "…") > maxW) {
                         name = name.substring(0, name.length() - 1);
                     }
                     name += "…";
                 }
-                this.fontRenderer.drawString(name, x + 6, ry + (ROW_H - 8) / 2, 0xDDDDDD);
+                this.fontRenderer.drawString(name, x + 6, ry + (ROW_H - 8) / 2, 0x404040);
             }
 
             // Scroll position indicator
@@ -345,16 +363,16 @@ public class GuiClothingPresets extends GuiScreen {
                 String info = (scrollOffset + 1) + "–"
                         + Math.min(scrollOffset + VISIBLE_ROWS, filteredPresets.size())
                         + " / " + filteredPresets.size();
-                this.fontRenderer.drawStringWithShadow(info,
+                this.fontRenderer.drawString(info,
                         x + panelW / 2 - this.fontRenderer.getStringWidth(info) / 2,
-                        y + 52 + VISIBLE_ROWS * ROW_H + 1, 0x666666);
+                        y + 52 + VISIBLE_ROWS * ROW_H + 1, 0x404040);
             }
         }
 
         // Save-mode label
         if (saveMode) {
             int bottomY = y + 52 + VISIBLE_ROWS * ROW_H + 6;
-            this.fontRenderer.drawStringWithShadow("Name:", x + 5, bottomY + 5, 0xAAAAAA);
+            this.fontRenderer.drawString("Name:", x + 5, bottomY + 5, 0x404040);
         }
 
         // Draw text fields

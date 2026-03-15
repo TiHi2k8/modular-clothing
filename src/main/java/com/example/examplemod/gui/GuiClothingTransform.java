@@ -9,11 +9,15 @@ import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiTextField;
 import net.minecraft.client.gui.inventory.GuiInventory;
+import net.minecraft.client.renderer.BufferBuilder;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.RenderHelper;
+import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.entity.RenderManager;
+import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
@@ -37,6 +41,8 @@ public class GuiClothingTransform extends GuiScreen {
     private static final int BTN_RESET        = 2;
     private static final int BTN_SCALE_TOGGLE = 3;
     private static final int BTN_PRESETS      = 4;
+
+    private static final ResourceLocation BACKGROUND_TEXTURE = new ResourceLocation("examplemod", "textures/gui/default_gui.png");
 
     private final ClothingGui parent;
     private final int slotIndex;
@@ -118,7 +124,7 @@ public class GuiClothingTransform extends GuiScreen {
      */
     private void buildLayout() {
         int cx     = this.width / 2;
-        int startY = this.height / 2 - 70;
+        int startY = this.height / 2 - 20; // Moved up by 30 (from +10 to -20)
         int fx     = cx + 20; // field center-X (fields are 90px wide, centered here)
 
         // Toggle button above the scale field
@@ -140,7 +146,7 @@ public class GuiClothingTransform extends GuiScreen {
             this.buttonList.add(new GuiButton(BTN_APPLY,   fx - 45, by,      42, 20, "Apply"));
             this.buttonList.add(new GuiButton(BTN_RESET,   fx +  2, by,      42, 20, "Reset"));
             this.buttonList.add(new GuiButton(BTN_CANCEL,  fx + 49, by,      42, 20, "Cancel"));
-            this.buttonList.add(new GuiButton(BTN_PRESETS, fx - 45, by + 24, 134, 20, "Presets..."));
+            this.buttonList.add(new GuiButton(BTN_PRESETS, fx - 45, by + 24, 134, 20, "Presets"));
         } else {
             // Per-axis scale: three scale fields + three offset fields
             fieldScaleX = makeField(0, fx, startY,       cScaleX);
@@ -155,7 +161,7 @@ public class GuiClothingTransform extends GuiScreen {
             this.buttonList.add(new GuiButton(BTN_APPLY,   fx - 45, by,      42, 20, "Apply"));
             this.buttonList.add(new GuiButton(BTN_RESET,   fx +  2, by,      42, 20, "Reset"));
             this.buttonList.add(new GuiButton(BTN_CANCEL,  fx + 49, by,      42, 20, "Cancel"));
-            this.buttonList.add(new GuiButton(BTN_PRESETS, fx - 45, by + 24, 134, 20, "Presets..."));
+            this.buttonList.add(new GuiButton(BTN_PRESETS, fx - 45, by + 24, 134, 20, "Presets"));
         }
     }
 
@@ -268,13 +274,21 @@ public class GuiClothingTransform extends GuiScreen {
         tryApplyLivePreview();
 
         this.drawDefaultBackground();
+        this.mc.getTextureManager().bindTexture(BACKGROUND_TEXTURE);
+        GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+        
+        int xSize = 350;
+        int ySize = 350;
+        int guiLeft = (this.width - xSize) / 2;
+        int guiTop  = (this.height - ySize) / 2 + 80;
+        drawScaledCustomSizeModalRect(guiLeft, guiTop, 0, 0, 256, 256, xSize, ySize, 256, 256);
 
         int cx     = this.width / 2;
-        int startY = this.height / 2 - 70;
+        int startY = this.height / 2 - 20; // Moved up by 30 (from +10 to -20)
 
         // Player preview on the left side
         int previewX = cx - 120;
-        int previewY = this.height / 2 + 60; // Moved down because scale is larger
+        int previewY = this.height / 2 + 110; // Moved up by 30 (from +140 to +110)
         
         // Use custom render method for 360 degree rotation and larger scale
         drawEntityOnScreen360(previewX, previewY, 70, previewLookX, 0.0f, this.mc.player);
