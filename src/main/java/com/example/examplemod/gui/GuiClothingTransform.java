@@ -124,8 +124,8 @@ public class GuiClothingTransform extends GuiScreen {
      */
     private void buildLayout() {
         int cx     = this.width / 2;
-        int startY = this.height / 2 - 20; // Moved up by 30 (from +10 to -20)
-        int fx     = cx + 20; // field center-X (fields are 90px wide, centered here)
+        int startY = this.height / 2 - 85; // Move edit controls further up
+        int fx     = cx + 80; // Move edit controls further right
 
         // Toggle button above the scale field
         this.buttonList.add(new GuiButton(BTN_SCALE_TOGGLE,
@@ -134,39 +134,40 @@ public class GuiClothingTransform extends GuiScreen {
 
         if (!perAxisMode) {
             // Uniform scale: one scale field + three offset fields
-            fieldScaleX = makeField(0, fx, startY,      cScaleX);
+            fieldScaleX = makeField(0, fx + 70, startY,      cScaleX);
             fieldScaleY = null;
             fieldScaleZ = null;
-            fieldOffX   = makeField(3, fx, startY + 30, cOffX);
-            fieldOffY   = makeField(4, fx, startY + 60, cOffY);
-            fieldOffZ   = makeField(5, fx, startY + 90, cOffZ);
+            fieldOffX   = makeField(3, fx + 70, startY + 30, cOffX);
+            fieldOffY   = makeField(4, fx + 70, startY + 60, cOffY);
+            fieldOffZ   = makeField(5, fx + 70, startY + 90, cOffZ);
             fieldScaleX.setFocused(true);
 
             int by = startY + 120;
-            this.buttonList.add(new GuiButton(BTN_APPLY,   fx - 45, by,      42, 20, "Apply"));
-            this.buttonList.add(new GuiButton(BTN_RESET,   fx +  2, by,      42, 20, "Reset"));
-            this.buttonList.add(new GuiButton(BTN_CANCEL,  fx + 49, by,      42, 20, "Cancel"));
-            this.buttonList.add(new GuiButton(BTN_PRESETS, fx - 45, by + 24, 134, 20, "Presets"));
+            this.buttonList.add(new GuiButton(BTN_APPLY,   fx - 65, by,      42, 20, "Apply"));
+            this.buttonList.add(new GuiButton(BTN_RESET,   fx -  18, by,      42, 20, "Reset"));
+            this.buttonList.add(new GuiButton(BTN_CANCEL,  fx + 29, by,      42, 20, "Cancel"));
+            this.buttonList.add(new GuiButton(BTN_PRESETS, fx - 65, by + 24, 134, 20, "Presets"));
         } else {
             // Per-axis scale: three scale fields + three offset fields
-            fieldScaleX = makeField(0, fx, startY,       cScaleX);
-            fieldScaleY = makeField(1, fx, startY + 22,  cScaleY);
-            fieldScaleZ = makeField(2, fx, startY + 44,  cScaleZ);
-            fieldOffX   = makeField(3, fx, startY + 70,  cOffX);
-            fieldOffY   = makeField(4, fx, startY + 92,  cOffY);
-            fieldOffZ   = makeField(5, fx, startY + 114, cOffZ);
+            fieldScaleX = makeField(0, fx + 70, startY,       cScaleX);
+            fieldScaleY = makeField(1, fx + 70, startY + 22,  cScaleY);
+            fieldScaleZ = makeField(2, fx + 70, startY + 44,  cScaleZ);
+            fieldOffX   = makeField(3, fx + 70, startY + 70,  cOffX);
+            fieldOffY   = makeField(4, fx + 70, startY + 92,  cOffY);
+            fieldOffZ   = makeField(5, fx + 70, startY + 114, cOffZ);
             fieldScaleX.setFocused(true);
 
             int by = startY + 138;
-            this.buttonList.add(new GuiButton(BTN_APPLY,   fx - 45, by,      42, 20, "Apply"));
-            this.buttonList.add(new GuiButton(BTN_RESET,   fx +  2, by,      42, 20, "Reset"));
-            this.buttonList.add(new GuiButton(BTN_CANCEL,  fx + 49, by,      42, 20, "Cancel"));
-            this.buttonList.add(new GuiButton(BTN_PRESETS, fx - 45, by + 24, 134, 20, "Presets"));
+            this.buttonList.add(new GuiButton(BTN_APPLY,   fx - 65, by,      42, 20, "Apply"));
+            this.buttonList.add(new GuiButton(BTN_RESET,   fx - 18, by,      42, 20, "Reset"));
+            this.buttonList.add(new GuiButton(BTN_CANCEL,  fx + 29, by,      42, 20, "Cancel"));
+            this.buttonList.add(new GuiButton(BTN_PRESETS, fx - 65, by + 24, 134, 20, "Presets"));
         }
     }
 
     private GuiTextField makeField(int id, int cx, int y, String text) {
-        GuiTextField field = new GuiTextField(id, this.fontRenderer, cx - 45, y, 90, 20);
+        // Right-align the text field: field is 90px wide, right edge at cx
+        GuiTextField field = new GuiTextField(id, this.fontRenderer, cx - 90, y, 90, 20);
         field.setMaxStringLength(16);
         field.setText(text);
         return field;
@@ -280,37 +281,38 @@ public class GuiClothingTransform extends GuiScreen {
         int xSize = 350;
         int ySize = 350;
         int guiLeft = (this.width - xSize) / 2;
-        int guiTop  = (this.height - ySize) / 2 + 80;
+        int guiTop  = (this.height - ySize) / 2 + 60;
         drawScaledCustomSizeModalRect(guiLeft, guiTop, 0, 0, 256, 256, xSize, ySize, 256, 256);
 
         int cx     = this.width / 2;
-        int startY = this.height / 2 - 20; // Moved up by 30 (from +10 to -20)
+        int startY = this.height / 2 - 85; // Match buildLayout for vertical alignment
+        int fx     = cx + 80; // Match buildLayout for horizontal alignment
 
         // Player preview on the left side
-        int previewX = cx - 120;
-        int previewY = this.height / 2 + 110; // Moved up by 30 (from +140 to +110)
+        int previewX = cx - 100;
+        int previewY = this.height / 2 + 95; // Moved up by 30 (from +140 to +110)
         
         // Use custom render method for 360 degree rotation and larger scale
-        drawEntityOnScreen360(previewX, previewY, 70, previewLookX, 0.0f, this.mc.player);
+        drawEntityOnScreen360(previewX, previewY, 80, previewLookX, 0.0f, this.mc.player);
 
-        // Panel title
+        // Panel title (top left)
         String title = "Transform  (Slot " + (slotIndex + 1) + ", Layer " + (layer + 1) + ")";
-        this.fontRenderer.drawStringWithShadow(title,
-                cx - this.fontRenderer.getStringWidth(title) / 2, startY - 30, 0xFFFFFF);
+        this.fontRenderer.drawStringWithShadow(title, guiLeft + 12, guiTop + 12, 0xFFFFFF);
 
-        // Labels
+        // Labels (move right to align with fields)
+        int labelX = fx - 100;
         if (!perAxisMode) {
-            this.fontRenderer.drawStringWithShadow("Scale:",    cx - 30, startY +  5, 0xAAAAAA);
-            this.fontRenderer.drawStringWithShadow("X Offset:", cx - 30, startY + 35, 0xAAAAAA);
-            this.fontRenderer.drawStringWithShadow("Y Offset:", cx - 30, startY + 65, 0xAAAAAA);
-            this.fontRenderer.drawStringWithShadow("Z Offset:", cx - 30, startY + 95, 0xAAAAAA);
+            this.fontRenderer.drawStringWithShadow("Scale:",    labelX + 45, startY +  5, 0xFFFFFF);
+            this.fontRenderer.drawStringWithShadow("X Offset:", labelX + 30, startY + 35, 0xFFFFFF);
+            this.fontRenderer.drawStringWithShadow("Y Offset:", labelX + 30, startY + 65, 0xFFFFFF);
+            this.fontRenderer.drawStringWithShadow("Z Offset:", labelX + 30, startY + 95, 0xFFFFFF);
         } else {
-            this.fontRenderer.drawStringWithShadow("Scale X:",  cx - 30, startY +  5, 0xAAAAAA);
-            this.fontRenderer.drawStringWithShadow("Scale Y:",  cx - 30, startY + 27, 0xAAAAAA);
-            this.fontRenderer.drawStringWithShadow("Scale Z:",  cx - 30, startY + 49, 0xAAAAAA);
-            this.fontRenderer.drawStringWithShadow("X Offset:", cx - 30, startY + 75, 0xAAAAAA);
-            this.fontRenderer.drawStringWithShadow("Y Offset:", cx - 30, startY + 97, 0xAAAAAA);
-            this.fontRenderer.drawStringWithShadow("Z Offset:", cx - 30, startY + 119, 0xAAAAAA);
+            this.fontRenderer.drawStringWithShadow("Scale X:",  labelX + 35, startY +  5, 0xFFFFFF);
+            this.fontRenderer.drawStringWithShadow("Scale Y:",  labelX + 35, startY + 27, 0xFFFFFF);
+            this.fontRenderer.drawStringWithShadow("Scale Z:",  labelX + 35, startY + 49, 0xFFFFFF);
+            this.fontRenderer.drawStringWithShadow("X Offset:", labelX + 30, startY + 75, 0xFFFFFF);
+            this.fontRenderer.drawStringWithShadow("Y Offset:", labelX + 30, startY + 97, 0xFFFFFF);
+            this.fontRenderer.drawStringWithShadow("Z Offset:", labelX + 30, startY + 119, 0xFFFFFF);
         }
 
         // Error message

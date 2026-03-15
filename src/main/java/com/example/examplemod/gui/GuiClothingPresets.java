@@ -97,7 +97,7 @@ public class GuiClothingPresets extends GuiScreen {
         openInstance = this;
         panelW    = 230; // Reduced width
         panelLeft = this.width / 2 - panelW / 2; // Centered again (removed +15)
-        panelTop  = this.height / 2 - (VISIBLE_ROWS * ROW_H / 2) - 25; // Moved down
+        panelTop  = this.height / 2 - (VISIBLE_ROWS * ROW_H / 2) - 55; // Moved up by 15 (from -25 to -40)
 
         super.initGui();
         buildLayout();
@@ -307,7 +307,7 @@ public class GuiClothingPresets extends GuiScreen {
         int xSize = 280; // Smaller size for presets
         int ySize = 280;
         int guiLeft = (this.width - xSize) / 2; // Centered again
-        int guiTop  = (this.height - ySize) / 2 + 25; // Moved down
+        int guiTop  = (this.height - ySize) / 2 + 10; // Moved up by 15 (from +25 to +10)
         drawScaledCustomSizeModalRect(guiLeft, guiTop, 0, 0, 256, 256, xSize, ySize, 256, 256);
 
         int x      = panelLeft;

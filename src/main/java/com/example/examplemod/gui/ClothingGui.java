@@ -55,8 +55,8 @@ public class ClothingGui extends GuiContainer {
         int i = this.guiLeft;
         int j = this.guiTop;
 
-        this.buttonList.add(new GuiButton(1, i + 28, j + 5, 20, 20, "-"));
-        this.buttonList.add(new GuiButton(2, i + 52, j + 5, 20, 20, "+"));
+        this.buttonList.add(new GuiButton(1, i + 5, j + 29, 20, 20, "-"));
+        this.buttonList.add(new GuiButton(2, i + 5, j + 5, 20, 20, "+"));
 
         if (lastSelectedLayer > 0) {
             IClothingInventory inv = this.mc.player.getCapability(ClothingProvider.CLOTHING_CAPABILITY, null);
@@ -179,7 +179,7 @@ public class ClothingGui extends GuiContainer {
         ClothingContainer container = (ClothingContainer) this.inventorySlots;
         String layerText = "Layer " + (container.getCurrentLayer() + 1);
         int textWidth = this.fontRenderer.getStringWidth(layerText);
-        this.fontRenderer.drawString(layerText, 51 - textWidth / 2, 28, 4210752);
+        this.fontRenderer.drawString(layerText, 51 - textWidth / 2, 5, 4210752);
 
         // Removed default text indicators as requested by user ("Arms", "Legs", etc.)
         // Instead, we rely on the visual slot arrangement and background icons.
