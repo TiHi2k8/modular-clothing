@@ -145,11 +145,8 @@ public class DynamXHelper {
             ModelRenderer rightFoot = getElement(footArr, 0); // screen right
             ModelRenderer leftFoot  = getElement(footArr, 1); // screen left
 
-            float leftLegSneak = player.isSneaking() ? -0.21F : 0.0F;
-            float leftBothLegSneak = player.isSneaking() ? -0.011F : 0.0F;
+            float leftLegSneak = player.isSneaking() ? -0.011F : 0.0F;
             float rightLegSneak = player.isSneaking() ? -0.007F : 0.0F;
-            float leftFootSneak = player.isSneaking() ? -1.0F : 0.0F;
-            float rightFootSneak = player.isSneaking() ? -1.2F : 0.0F;
 
             // Strict Visibility Control: Convert all to hidden, render only what is needed, then restore.
             // This prevents "body" render from cascading to "legs" (if parented), and ensures no slot influences another.
@@ -197,32 +194,32 @@ public class DynamXHelper {
 
                         if (pantsLegsMode) {
                             setVisible(leftLeg, true);
-                            renderPart(leftLeg, defaultModel.bipedRightLeg, transform, scale, 0.0F, 0.05F, 0.0F, leftBothLegSneak);
+                            renderPart(leftLeg, defaultModel.bipedRightLeg, transform, scale, 0.0F, 0.05F, 0.0F, leftLegSneak);
                             setVisible(leftLeg, false);
                         }
                         break;
                     case LEFT_LEG:
                         if (!pantsLegsMode) {
                             setVisible(leftLeg, true);
-                            renderPart(leftLeg, defaultModel.bipedRightLeg, transform, scale, 0.0F, 0.0475F, 0.0F, leftBothLegSneak);
+                            renderPart(leftLeg, defaultModel.bipedRightLeg, transform, scale, 0.0F, 0.0475F, 0.0F, leftLegSneak);
                             setVisible(leftLeg, false);
                         }
                         break;
                     case RIGHT_FOOT:
                         setVisible(rightFoot, true);
-                        renderPart(rightFoot, defaultModel.bipedLeftLeg, transform, scale, 0.005F, 0.045F, 0.0F, leftFootSneak);
+                        renderPart(rightFoot, defaultModel.bipedLeftLeg, transform, scale, 0.005F, 0.045F, 0.0F, 0.0F);
                         setVisible(rightFoot, false);
 
                         if (shoesFeetMode) {
                             setVisible(leftFoot, true);
-                            renderPart(leftFoot, defaultModel.bipedRightLeg, transform, scale, -0.005F, 0.045F, 0.0F, rightFootSneak);
+                            renderPart(leftFoot, defaultModel.bipedRightLeg, transform, scale, -0.005F, 0.045F, 0.0F, 0.0F);
                             setVisible(leftFoot, false);
                         }
                         break;
                     case LEFT_FOOT:
                          if (!shoesFeetMode) {
                             setVisible(leftFoot, true);
-                            renderPart(leftFoot, defaultModel.bipedRightLeg, transform, scale, -0.005F, 0.045F, 0.0F, rightFootSneak);
+                            renderPart(leftFoot, defaultModel.bipedRightLeg, transform, scale, -0.005F, 0.045F, 0.0F, 0.0F);
                             setVisible(leftFoot, false);
                         }
                         break;
