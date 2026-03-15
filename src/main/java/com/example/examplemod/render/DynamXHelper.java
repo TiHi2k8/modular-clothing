@@ -114,6 +114,7 @@ public class DynamXHelper {
         // Ensure animations are updated since we don't call model.render()
         model.setRotationAngles(limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, scale, player);
 
+        GlStateManager.pushMatrix();
         try {
             // Replicate ModelBiped.render() sneaking offset
             if (player.isSneaking()) {
@@ -144,63 +145,123 @@ public class DynamXHelper {
             ModelRenderer rightFoot = getElement(footArr, 0); // screen right
             ModelRenderer leftFoot  = getElement(footArr, 1); // screen left
 
-            // Adjust for sneaking: Vanilla renders the whole model 0.2F lower when sneaking.
-            // We pass this offset to renderPart to adjust the pivot point Y.
-            float sneakY = player.isSneaking() ? 0.2F : 0.0F;
-            float leftArmSneak = player.isSneaking() ? -0.2F : 0.0F;
-            float rightArmSneak = player.isSneaking() ? -0.2F : 0.0F;
-            float bodySneak = player.isSneaking() ? -0.4F : 0.0F;
             float leftLegSneak = player.isSneaking() ? -0.21F : 0.0F;
             float leftBothLegSneak = player.isSneaking() ? -0.011F : 0.0F;
             float rightLegSneak = player.isSneaking() ? -0.007F : 0.0F;
             float leftFootSneak = player.isSneaking() ? -1.0F : 0.0F;
             float rightFootSneak = player.isSneaking() ? -1.2F : 0.0F;
 
-            switch (slot) {
-                case CHEST:
-                    if (chestShowArms) {
+            // Strict Visibility Control: Convert all to hidden, render only what is needed, then restore.
+            // This prevents "body" render from cascading to "legs" (if parented), and ensures no slot influences another.
+            Map<ModelRenderer, Boolean> visibilityBackup = new HashMap<>();
+            saveAndHide(body, visibilityBackup);
+            saveAndHide(armsArr, visibilityBackup);
+            saveAndHide(legsArr, visibilityBackup);
+            saveAndHide(footArr, visibilityBackup);
+
+            try {
+                switch (slot) {
+                    case CHEST:
+                        if (chestShowArms) {
+                            setVisible(rightArm, true);
+                            renderPart(rightArm, defaultModel.bipedLeftArm, transform, scale, 0.02F, 0.01F, 0.0F, 0.0F);
+                            setVisible(rightArm, false);
+
+                            setVisible(leftArm, true);
+                            renderPart(leftArm,  defaultModel.bipedRightArm, transform, scale, -0.02F, 0.01F, 0.0F, 0.0F);
+                            setVisible(leftArm, false);
+
+                            setVisible(body, true);
+                            renderPart(body, defaultModel.bipedBody, transform, scale, 0.0F, 0.0F, 0.0F, 0.0F);
+                            setVisible(body, false);
+                        } else {
+                            setVisible(body, true);
+                            renderPart(body, defaultModel.bipedBody, transform, scale, 0.0F, 0.0F, 0.0F, 0.0F);
+                            setVisible(body, false);
+                        }
+                        break;
+                    case RIGHT_ARM:
+                        setVisible(rightArm, true);
                         renderPart(rightArm, defaultModel.bipedLeftArm, transform, scale, 0.02F, 0.01F, 0.0F, 0.0F);
-                        renderPart(leftArm,  defaultModel.bipedRightArm, transform, scale, -0.02F, 0.01F, 0.0F, 0.0F);
-                        renderPart(body, defaultModel.bipedBody, transform, scale, 0.0F, 0.0F, 0.0F, 0.0F);
-                    } else {
-                        renderPart(body, defaultModel.bipedBody, transform, scale, 0.0F, 0.0F, 0.0F, bodySneak);
-                    }
-                    break;
-                case RIGHT_ARM:
-                    renderPart(rightArm, defaultModel.bipedLeftArm, transform, scale, 0.02F, 0.01F, 0.0F, 0.0F);
-                    break;
-                case LEFT_ARM:
-                    renderPart(leftArm, defaultModel.bipedRightArm, transform, scale, -0.02F, 0.01F, 0.0F, leftArmSneak);
-                    break;
-                case RIGHT_LEG:
-                    renderPart(rightLeg, defaultModel.bipedLeftLeg, transform, scale, 0.0F, 0.0475F, 0.0F, rightLegSneak);
-                    if (pantsLegsMode) {
-                        renderPart(leftLeg, defaultModel.bipedRightLeg, transform, scale, 0.0F, 0.05F, 0.0F, leftBothLegSneak);
-                    }
-                    break;
-                case LEFT_LEG:
-                    if (!pantsLegsMode) {
-                        renderPart(leftLeg, defaultModel.bipedRightLeg, transform, scale, 0.0F, 0.0475F, 0.0F, leftLegSneak);
-                    }
-                    break;
-                case RIGHT_FOOT:
-                    renderPart(rightFoot, defaultModel.bipedLeftLeg, transform, scale, 0.005F, 0.045F, 0.0F, leftFootSneak);
-                    if (shoesFeetMode) {
-                        renderPart(leftFoot, defaultModel.bipedRightLeg, transform, scale, -0.005F, 0.09F, 0.0F, rightFootSneak);
-                    }
-                    break;
-                case LEFT_FOOT:
-                     if (!shoesFeetMode) {
-                        renderPart(leftFoot, defaultModel.bipedRightLeg, transform, scale, -0.005F, 0.045F, 0.0F, rightFootSneak);
-                    }
-                    break;
-                default:
-                    break;
+                        setVisible(rightArm, false);
+                        break;
+                    case LEFT_ARM:
+                        setVisible(leftArm, true);
+                        renderPart(leftArm, defaultModel.bipedRightArm, transform, scale, -0.02F, 0.01F, 0.0F, 0.0F);
+                        setVisible(leftArm, false);
+                        break;
+                    case RIGHT_LEG:
+                        setVisible(rightLeg, true);
+                        renderPart(rightLeg, defaultModel.bipedLeftLeg, transform, scale, 0.0F, 0.0475F, 0.0F, rightLegSneak);
+                        setVisible(rightLeg, false);
+
+                        if (pantsLegsMode) {
+                            setVisible(leftLeg, true);
+                            renderPart(leftLeg, defaultModel.bipedRightLeg, transform, scale, 0.0F, 0.05F, 0.0F, leftBothLegSneak);
+                            setVisible(leftLeg, false);
+                        }
+                        break;
+                    case LEFT_LEG:
+                        if (!pantsLegsMode) {
+                            setVisible(leftLeg, true);
+                            renderPart(leftLeg, defaultModel.bipedRightLeg, transform, scale, 0.0F, 0.0475F, 0.0F, leftBothLegSneak);
+                            setVisible(leftLeg, false);
+                        }
+                        break;
+                    case RIGHT_FOOT:
+                        setVisible(rightFoot, true);
+                        renderPart(rightFoot, defaultModel.bipedLeftLeg, transform, scale, 0.005F, 0.045F, 0.0F, leftFootSneak);
+                        setVisible(rightFoot, false);
+
+                        if (shoesFeetMode) {
+                            setVisible(leftFoot, true);
+                            renderPart(leftFoot, defaultModel.bipedRightLeg, transform, scale, -0.005F, 0.045F, 0.0F, rightFootSneak);
+                            setVisible(leftFoot, false);
+                        }
+                        break;
+                    case LEFT_FOOT:
+                         if (!shoesFeetMode) {
+                            setVisible(leftFoot, true);
+                            renderPart(leftFoot, defaultModel.bipedRightLeg, transform, scale, -0.005F, 0.045F, 0.0F, rightFootSneak);
+                            setVisible(leftFoot, false);
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            } finally {
+                restoreState(visibilityBackup);
             }
 
             return true;
         } catch (Exception e) {
             return false;
+        } finally {
+            GlStateManager.popMatrix();
+        }
+    }
+
+    private static void saveAndHide(Object part, Map<ModelRenderer, Boolean> state) {
+        if (part == null) return;
+        if (part instanceof ModelRenderer) {
+            ModelRenderer mr = (ModelRenderer) part;
+            state.put(mr, mr.showModel);
+            mr.showModel = false;
+        } else if (part.getClass().isArray()) {
+            int len = Array.getLength(part);
+            for (int i = 0; i < len; i++) {
+                saveAndHide(Array.get(part, i), state);
+            }
+        }
+    }
+
+    private static void setVisible(ModelRenderer mr, boolean visible) {
+        if (mr != null) mr.showModel = visible;
+    }
+
+    private static void restoreState(Map<ModelRenderer, Boolean> state) {
+        for (Map.Entry<ModelRenderer, Boolean> entry : state.entrySet()) {
+            entry.getKey().showModel = entry.getValue();
         }
     }
 

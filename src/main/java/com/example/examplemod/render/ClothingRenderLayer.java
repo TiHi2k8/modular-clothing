@@ -246,6 +246,13 @@ public class ClothingRenderLayer implements LayerRenderer<AbstractClientPlayer> 
                             }
                             if (scaleX != 1.0f || scaleY != 1.0f || scaleZ != 1.0f) {
                                 float[] pivot = getPivotForSlot(pivotReference, slotType, chestArmsMode, pantsLegsMode, shoesFeetMode);
+                                
+                                // Fix for sneaker pivot offset: The head/body moves down 0.2F when sneaking.
+                                // We must adjust the pivot to match the actual render position so scaling is centered correctly.
+                                if (player.isSneaking()) {
+                                    pivot[1] += 0.2f;
+                                }
+
                                 GlStateManager.translate(pivot[0], pivot[1], pivot[2]);
 
                                 // Fix for HEAD: Apply rotation sandwich so scaling is local to the head frame
